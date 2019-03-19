@@ -92,7 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)lib/glm;$(SolutionDir)lib/glfw-3.2.1/include;$(SolutionDir)lib/vulkan/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_INCLUDE_VULKAN;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>$(SolutionDir)obj\$(IntDir)</AssemblerListingLocation>
       <ObjectFileName>$(SolutionDir)obj\$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(SolutionDir)obj\$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
@@ -126,7 +126,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)lib/glm;$(SolutionDir)lib/glfw-3.2.1/include;$(SolutionDir)lib/vulkan/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>NDEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>GLFW_INCLUDE_VULKAN;NDEBUG;_MBCS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>$(SolutionDir)obj\$(IntDir)</AssemblerListingLocation>
       <ObjectFileName>$(SolutionDir)obj\$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(SolutionDir)obj\$(IntDir)vc$(PlatformToolsetVersion).pdb</ProgramDataBaseFileName>
@@ -142,9 +142,11 @@
   <ItemGroup>
     <ClCompile Include="application.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="renderer\renderer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.hpp" />
+    <ClInclude Include="renderer\renderer.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

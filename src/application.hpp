@@ -1,13 +1,7 @@
 #pragma once
-#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vector>
-
-#ifdef NDEBUG
-const bool enableValidationLayers = false;
-#else
-const bool enableValidationLayers = true;
-#endif
+#include "renderer/renderer.hpp"
 
 
 class Application
@@ -21,16 +15,8 @@ private:
 
 	void initWindow();
 
-	void initVulkan();
-	void createInstance();
-
 	int width = 800;
 	int height = 600;
-
-
-
 	GLFWwindow* window;
-
-	VkInstance instance;
-	VkDebugReportCallbackEXT callback;
+	Renderer renderer;
 };
