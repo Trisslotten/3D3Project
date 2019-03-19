@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <glm/glm.hpp>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -9,6 +10,7 @@ const bool enableValidationLayers = false;
 const bool enableValidationLayers = true;
 #endif
 
+#define ALLOC(fn, vec, ...) { unsigned int count=0; fn(__VA_ARGS__, &count, nullptr); vec.resize(count); fn(__VA_ARGS__, &count, vec.data()); }
 
 VkResult CreateDebugReportCallbackEXT(
 	VkInstance instance,
@@ -52,10 +54,11 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 
-void Renderer::init(GLFWwindow* window)
+void Renderer::init()
 {
+	createWindow();
 	createInstance();
-	createSurface(window);
+	createSurface();
 	pickPhysicalDevice();
 	createLogicalDevice();
 }
@@ -65,6 +68,26 @@ void Renderer::cleanup()
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
+	glfwDestroyWindow(window);
+	glfwTerminate();
+}
+
+bool Renderer::windowShouldClose()
+{
+	return glfwWindowShouldClose(window);
+}
+
+void Renderer::createWindow()
+{
+	if (!glfwInit())
+		throw std::runtime_error("failed to init glfw");
+
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+	glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+	if (!window)
+		throw std::runtime_error("failed to create glfw window");
 }
 
 void Renderer::createInstance()
@@ -139,7 +162,7 @@ void Renderer::createInstance()
 	}
 }
 
-void Renderer::createSurface(GLFWwindow* window)
+void Renderer::createSurface()
 {
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
 	{
@@ -219,6 +242,67 @@ void Renderer::createLogicalDevice()
 	vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &computeQueue);
 }
 
+void Renderer::createSwapChain()
+{
+	SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
+
+	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
+	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes);
+	VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities);
+
+	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
+	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+	{
+		imageCount = swapChainSupport.capabilities.maxImageCount;
+	}
+
+	VkSwapchainCreateInfoKHR createInfo = {};
+	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	createInfo.surface = surface;
+
+	createInfo.minImageCount = imageCount;
+	createInfo.imageFormat = surfaceFormat.format;
+	createInfo.imageColorSpace = surfaceFormat.colorSpace;
+	createInfo.imageExtent = extent;
+	createInfo.imageArrayLayers = 1;
+	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+	uint32_t queueFamilyIndices[] = {
+		(uint32_t)familyIndices.graphicsFamily, (uint32_t)familyIndices.presentFamily
+	};
+
+	if (familyIndices.graphicsFamily != familyIndices.presentFamily)
+	{
+		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+		createInfo.queueFamilyIndexCount = 2;
+		createInfo.pQueueFamilyIndices = queueFamilyIndices;
+	}
+	else
+	{
+		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	}
+
+	createInfo.preTransform = swapChainSupport.capabilities.currentTransform;
+	createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	createInfo.presentMode = presentMode;
+	createInfo.clipped = VK_TRUE;
+
+	VkSwapchainKHR oldSwapChain = swapChain;
+	createInfo.oldSwapchain = oldSwapChain;
+
+	VkSwapchainKHR newSwapChain;
+	if (vkCreateSwapchainKHR(device, &createInfo, nullptr, &newSwapChain) != VK_SUCCESS)
+		throw std::runtime_error("failed to create swap chain!");
+
+	swapChain = newSwapChain;
+
+
+	ALLOC(vkGetSwapchainImagesKHR, swapChainImages, device, swapChain);
+
+	swapChainImageFormat = surfaceFormat.format;
+	swapChainExtent = extent;
+}
+
 bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
 {
 	QueueFamilyIndices indices = findQueueFamilies(device);
@@ -257,4 +341,60 @@ QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
 	}
 
 	return indices;
+}
+
+SwapChainSupportDetails Renderer::querySwapChainSupport(VkPhysicalDevice device)
+{
+	SwapChainSupportDetails details;
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
+	ALLOC(vkGetPhysicalDeviceSurfaceFormatsKHR, details.formats, device, surface);
+	ALLOC(vkGetPhysicalDeviceSurfacePresentModesKHR, details.presentModes, device, surface);
+	return details;
+}
+
+VkSurfaceFormatKHR Renderer::chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats)
+{
+	if (availableFormats.size() == 1 && availableFormats[0].format == VK_FORMAT_UNDEFINED)
+	{
+		return{ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+	}
+
+	for (const auto& availableFormat : availableFormats)
+	{
+		if (availableFormat.format == VK_FORMAT_B8G8R8A8_UNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+		{
+			return availableFormat;
+		}
+	}
+	return availableFormats[0];
+}
+
+VkPresentModeKHR Renderer::chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes)
+{
+	for (const auto& availablePresentMode : availablePresentModes)
+	{
+		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+		{
+			return availablePresentMode;
+		}
+	}
+	return VK_PRESENT_MODE_FIFO_KHR;
+}
+
+VkExtent2D Renderer::chooseSwapExtent(const VkSurfaceCapabilitiesKHR & capabilities)
+{
+	// https://vulkan.lunarg.com/doc/view/1.0.26.0/linux/vkspec.chunked/ch29s05.html
+	if (capabilities.currentExtent.width != 0xFFFFFFFF)
+	{
+		return capabilities.currentExtent;
+	}
+	else
+	{
+		VkExtent2D actualExtent = { width, height };
+
+		actualExtent.width = glm::max(capabilities.minImageExtent.width, glm::min(capabilities.maxImageExtent.width, actualExtent.width));
+		actualExtent.height = glm::max(capabilities.minImageExtent.height, glm::min(capabilities.maxImageExtent.height, actualExtent.height));
+
+		return actualExtent;
+	}
 }

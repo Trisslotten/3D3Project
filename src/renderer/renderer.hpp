@@ -22,22 +22,37 @@ struct SwapChainSupportDetails
 class Renderer
 {
 public:
-	void init(GLFWwindow* window);
-
+	void init();
 	void cleanup();
+
+	bool windowShouldClose();
 private:
+	void createWindow();
 	void createInstance();
-	void createSurface(GLFWwindow* window);
+	void createSurface();
 	void pickPhysicalDevice();
 	void createLogicalDevice();
+	void createSwapChain();
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+	SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device);
+	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
+	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
+
+	int width = 800;
+	int height = 600;
+	GLFWwindow* window;
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 	VkDevice device;
 	VkSurfaceKHR surface;
+	VkSwapchainKHR swapChain = VK_NULL_HANDLE;
+	std::vector<VkImage> swapChainImages;
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;

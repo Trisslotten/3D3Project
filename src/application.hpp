@@ -13,10 +13,5 @@ private:
 	void update();
 	void cleanup();
 
-	void initWindow();
-
-	int width = 800;
-	int height = 600;
-	GLFWwindow* window;
 	Renderer renderer;
 };
