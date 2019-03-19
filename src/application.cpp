@@ -37,6 +37,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	std::cerr << "VL: " << msg << "\n" << std::endl;
 	return VK_FALSE;
 }
+const std::vector<const char*> validationLayers = {
+	"VK_LAYER_LUNARG_standard_validation"
+};
+
 
 void Application::run()
 {
