@@ -23,6 +23,8 @@ class Renderer
 {
 public:
 	void init();
+	//void submit();
+	void render();
 	void cleanup();
 
 	bool windowShouldClose();
@@ -33,6 +35,9 @@ private:
 	void pickPhysicalDevice();
 	void createLogicalDevice();
 	void createSwapChain();
+	void createImageViews();
+	void createRenderPass();
+	void createFramebuffers();
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -41,6 +46,8 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
+
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 	int width = 800;
 	int height = 600;
 	GLFWwindow* window;
@@ -53,10 +60,14 @@ private:
 	std::vector<VkImage> swapChainImages;
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+	std::vector<VkImageView> swapChainImageViews;
+	std::vector<VkFramebuffer> swapChainFramebuffers;
+	VkRenderPass renderPass;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkQueue computeQueue;
+	//VkQueue transferQueue;
 
 	VkDebugReportCallbackEXT callback;
 

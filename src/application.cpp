@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <utility>
+#include <future>
 
 int nDrawThreads = 4;
 bool running = true;
@@ -12,7 +13,7 @@ bool running = true;
 void Application::compute() {
 	while (running) {
 		//renderer.recordCompute() ??
-		printf("compute\n");
+		//printf("compute\n");
 		std::this_thread::sleep_for(std::chrono::milliseconds(100)); //remove me
 	}
 }
@@ -20,7 +21,7 @@ void Application::compute() {
 void Application::draw(int idx) {
 	while (running) {
 		//renderer.recordDraw (...) split draw records into chunks
-		printf("draw %d\n", idx);
+		//printf("draw %d\n", idx);
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 }
@@ -28,7 +29,7 @@ void Application::draw(int idx) {
 void Application::transfer() {
 	while (running) {
 		//...
-		printf("transfer\n");
+		//printf("transfer\n");
 		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 }
@@ -46,6 +47,8 @@ void Application::run()
 void Application::init()
 {
 	renderer.init();
+
+	threadPool.init(4);
 
 	//init threads
 	tCompute = new std::thread(&Application::compute, this);
@@ -66,7 +69,49 @@ void Application::init()
 
 void Application::update()
 {
+	if (timer.elapsed() > 2.0)
+	{
+		timer.restart();
+	}
+	std::vector<std::future<void>> futures;
+	futures.reserve(4);
 
+	Timer t;
+	t.restart();
+
+	bool mine = true;
+
+	if (timer.elapsed() < 1)
+	{
+		for (int i = 0; i < 4; i++)
+			threadPool.submit([] {});
+		threadPool.waitForAll();
+	}
+	else
+	{
+		mine = false;
+		
+		for (int i = 0; i < 4; i++)
+		{
+			futures.push_back(std::async(std::launch::async, [] {}));
+		}
+		for (int i = 0; i < 4; i++)
+		{
+			futures[i].wait();
+		}
+	}
+	double time = t.restart();
+
+	if (mine)
+		std::cout << "mine: ";
+	else 
+		std::cout << "othr: ";
+	for (int i = 0; i < time*1000000.0; i++)
+	{
+		std::cout << "|";
+	}
+	std::cout << "\n";
+	std::this_thread::sleep_for(std::chrono::milliseconds(1000/144));
 }
 
 void Application::cleanup()

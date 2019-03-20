@@ -3,6 +3,8 @@
 #include <vector>
 #include <thread>
 #include "renderer/renderer.hpp"
+#include "util/threadpool.hpp"
+#include "util/timer.hpp"
 
 
 class Application
@@ -26,4 +28,8 @@ private:
 	void transfer();
 
 	int test = 0;
+	int asd = 0;
+
+	Timer timer;
+	ThreadPool threadPool;
 };
