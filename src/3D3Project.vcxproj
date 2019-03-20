@@ -99,7 +99,7 @@
       <XMLDocumentationFileName>$(SolutionDir)obj\$(IntDir)</XMLDocumentationFileName>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(SolutionDir)lib/glfw-3.2.1/lib;$(SolutionDir)lib/vulkan/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\lib\onecore\x64;$(SolutionDir)lib/glfw-3.2.1/lib;$(SolutionDir)lib/vulkan/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;vulkan-1.lib;VkLayer_utils.lib;shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
