@@ -22,7 +22,7 @@ struct Entity {
 		pos.y = 0;
 		team = TEAM_FRIENDLY;
 	}
-	Entity(float tx, float ty, unsigned int t) {
+	Entity(unsigned int tx, unsigned int ty, unsigned int t) {
 		pos.x = tx;
 		pos.y = ty;
 		team = t;
