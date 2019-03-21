@@ -46,6 +46,9 @@ void Application::run()
 
 void Application::init()
 {
+	world.init(100, 100, 10, 20);
+	world.printEntities();
+
 	renderer.init();
 
 	threadPool.init(4);
@@ -59,6 +62,7 @@ void Application::init()
 	tTransfer = new std::thread(&Application::transfer, this);
 	
 	test = 4;
+
 	/*
 	//sync funcs
 	tCompute->join();

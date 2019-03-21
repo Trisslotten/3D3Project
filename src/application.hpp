@@ -5,6 +5,7 @@
 #include "renderer/renderer.hpp"
 #include "util/threadpool.hpp"
 #include "util/timer.hpp"
+#include "world.h"
 
 
 class Application
@@ -17,6 +18,7 @@ private:
 	void cleanup();
 
 	Renderer renderer;
+	World world;
 
 	//threads
 	std::thread* tCompute;
