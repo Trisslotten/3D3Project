@@ -144,12 +144,15 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer\renderer.cpp" />
     <ClCompile Include="util\threadpool.cpp" />
+    <ClCompile Include="world.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.hpp" />
+    <ClInclude Include="entity.h" />
     <ClInclude Include="renderer\renderer.hpp" />
     <ClInclude Include="util\threadpool.hpp" />
     <ClInclude Include="util\timer.hpp" />
+    <ClInclude Include="world.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
