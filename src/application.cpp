@@ -73,49 +73,7 @@ void Application::init()
 
 void Application::update()
 {
-	if (timer.elapsed() > 2.0)
-	{
-		timer.restart();
-	}
-	std::vector<std::future<void>> futures;
-	futures.reserve(4);
 
-	Timer t;
-	t.restart();
-
-	bool mine = true;
-
-	if (timer.elapsed() < 1)
-	{
-		for (int i = 0; i < 4; i++)
-			threadPool.submit([] {});
-		threadPool.waitForAll();
-	}
-	else
-	{
-		mine = false;
-		
-		for (int i = 0; i < 4; i++)
-		{
-			futures.push_back(std::async(std::launch::async, [] {}));
-		}
-		for (int i = 0; i < 4; i++)
-		{
-			futures[i].wait();
-		}
-	}
-	double time = t.restart();
-
-	if (mine)
-		std::cout << "mine: ";
-	else 
-		std::cout << "othr: ";
-	for (int i = 0; i < time*1000000.0; i++)
-	{
-		std::cout << "|";
-	}
-	std::cout << "\n";
-	std::this_thread::sleep_for(std::chrono::milliseconds(1000/144));
 }
 
 void Application::cleanup()

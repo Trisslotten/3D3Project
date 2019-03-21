@@ -8,10 +8,9 @@
 
 class ThreadPool
 {
-	
 public:
 	void init(size_t numThreads = 4);
-	void submit(std::function<void()> lambda);
+	void submit(std::function<void()> task);
 
 	void waitForAll();
 private:
@@ -23,10 +22,13 @@ private:
 		return currThread;
 	}
 	int currThread = 0;
+	int numInUse = 0;
 
 	bool running = true;
 	std::vector<std::thread> threads;
 	std::vector<std::mutex*> mutexes;
 	std::vector<std::condition_variable*> cvs;
-	std::vector<bool> startTask;
+	std::vector<bool> taskRunning;
+
+	std::vector<std::function<void()>> tasks;
 };

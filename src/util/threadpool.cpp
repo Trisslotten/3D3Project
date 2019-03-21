@@ -4,7 +4,8 @@
 
 void ThreadPool::init(size_t numThreads)
 {
-	startTask.resize(numThreads);
+	taskRunning.resize(numThreads);
+	tasks.resize(numThreads);
 	for (int i = 0; i < numThreads; i++)
 	{
 		cvs.push_back(new std::condition_variable());
@@ -16,13 +17,19 @@ void ThreadPool::init(size_t numThreads)
 	}
 }
 
-void ThreadPool::submit(std::function<void()> lambda)
+void ThreadPool::submit(std::function<void()> task)
 {
+	if (numInUse == threads.size())
+	{
+		throw std::runtime_error("Cannot submit more tasks to thread pool, all threads occupied! (call waitForAll())");
+	}
+	numInUse++;
+
 	int id = nextThread();
 	{
 		std::lock_guard<std::mutex> lock(*mutexes[id]);
-		startTask[id] = true;
-		// TODO: add submitted task so reachable in threadfunc
+		taskRunning[id] = true;
+		tasks[id] = task;
 	}
 	cvs[id]->notify_one();
 }
@@ -32,8 +39,9 @@ void ThreadPool::waitForAll()
 	for (int i = 0; i < threads.size(); i++)
 	{
 		std::unique_lock<std::mutex> lock(*mutexes[i]);
-		cvs[i]->wait(lock, [&] { return !startTask[i]; });
+		cvs[i]->wait(lock, [&] { return !taskRunning[i]; });
 	}
+	numInUse = 0;
 }
 
 void ThreadPool::threadfunc(int id)
@@ -41,12 +49,11 @@ void ThreadPool::threadfunc(int id)
 	while (running)
 	{
 		std::unique_lock<std::mutex> lock(*mutexes[id]);
-		cvs[id]->wait(lock, [&] { return startTask[id]; });
+		cvs[id]->wait(lock, [&] { return taskRunning[id]; });
 
-		// TODO: run submitted task here
-		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		tasks[id]();
 
-		startTask[id] = false;
+		taskRunning[id] = false;
 		cvs[id]->notify_one();
 	}
 }
