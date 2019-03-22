@@ -7,9 +7,13 @@ struct QueueFamilyIndices
 	int graphicsFamily = -1;
 	int presentFamily = -1;
 	int computeFamily = -1;
+	int transferFamily = -1;
 	bool isComplete()
 	{
-		return graphicsFamily >= 0 && presentFamily >= 0 && computeFamily >= 0;
+		return graphicsFamily >= 0 
+			&& presentFamily >= 0 
+			&& computeFamily >= 0
+			&& transferFamily >= 0;
 	}
 };
 struct SwapChainSupportDetails
@@ -67,7 +71,7 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkQueue computeQueue;
-	//VkQueue transferQueue;
+	VkQueue transferQueue;
 
 	VkDebugReportCallbackEXT callback;
 

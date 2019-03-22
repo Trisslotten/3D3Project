@@ -434,6 +434,8 @@ QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
 				indices.graphicsFamily = i;
 			if(queueFamily.queueFlags & VK_QUEUE_COMPUTE_BIT)
 				indices.computeFamily = i;
+			if (queueFamily.queueFlags & VK_QUEUE_TRANSFER_BIT)
+				indices.transferFamily = i;
 			if (presentSupport)
 				indices.presentFamily = i;
 		}
