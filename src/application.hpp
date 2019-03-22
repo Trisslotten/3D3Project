@@ -29,7 +29,6 @@ private:
 	void draw(int idx);
 	void transfer();
 
-	int test = 0;
 	int asd = 0;
 
 	Timer timer;

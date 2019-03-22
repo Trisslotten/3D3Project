@@ -46,7 +46,8 @@ void Application::run()
 
 void Application::init()
 {
-	world.init(100, 100, 10, 20);
+	//world.init(100, 100, 10);
+	world.init("test2.png", 1);
 	world.printEntities();
 
 	renderer.init();
@@ -60,15 +61,6 @@ void Application::init()
 		tDraws.push_back(td);
 	}
 	tTransfer = new std::thread(&Application::transfer, this);
-	
-	test = 4;
-
-	/*
-	//sync funcs
-	tCompute->join();
-	tTransfer->join();
-	td->join();
-	*/
 }
 
 void Application::update()

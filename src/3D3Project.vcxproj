@@ -99,7 +99,7 @@
       <XMLDocumentationFileName>$(SolutionDir)obj\$(IntDir)</XMLDocumentationFileName>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\lib\onecore\x64;$(SolutionDir)lib/glfw-3.2.1/lib;$(SolutionDir)lib/vulkan/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files %28x86%29\Microsoft Visual Studio\2017\Community\VC\Tools\MSVC\14.16.27023\lib\onecore\x64;$(SolutionDir)lib/glfw-3.2.1/lib;$(SolutionDir)lib/vulkan/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;vulkan-1.lib;VkLayer_utils.lib;shaderc_combined.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -141,6 +141,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="application.cpp" />
+    <ClCompile Include="lodepng\lodepng.cpp" />
+    <ClCompile Include="lodepng\lodepng_util.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer\renderer.cpp" />
     <ClCompile Include="util\threadpool.cpp" />
@@ -149,6 +151,8 @@
   <ItemGroup>
     <ClInclude Include="application.hpp" />
     <ClInclude Include="entity.h" />
+    <ClInclude Include="lodepng\lodepng.h" />
+    <ClInclude Include="lodepng\lodepng_util.h" />
     <ClInclude Include="renderer\renderer.hpp" />
     <ClInclude Include="util\threadpool.hpp" />
     <ClInclude Include="util\timer.hpp" />

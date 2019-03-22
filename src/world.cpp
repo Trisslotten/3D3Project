@@ -1,32 +1,69 @@
 #include "world.h" 
 #include <math.h>
+#include "lodepng/lodepng.h"
 
 World::World() {
 
 }
 
 World::~World() {
-
+	delete map;
+	delete origMap;
 }
 
-void World::init(unsigned int width, unsigned int height, unsigned int friendlyCount, unsigned int enemyCount) {
-	gridDims.x = width; gridDims.y = height;
+void World::init(unsigned int width, unsigned int height, unsigned int entityCount) {
+	dims.x = width; dims.y = height;
 
-	int sqFr = sqrt(friendlyCount);
-	int sqEn = sqrt(enemyCount);
+	map = new int[width*height];
+
+	int sqFr = sqrt(entityCount);
 
 	vec2 fStart(0, 0);
-	vec2 eStart(width - sqEn, height - sqEn);
 
 	for (int x = fStart.x; x < fStart.x +sqFr; x++) {
 		for (int y = fStart.y; y < fStart.y + sqFr; y++) {
 			entities.push_back(Entity(x, y, TEAM_FRIENDLY));
 		}
 	}
+}
 
-	for (int x = eStart.x; x < eStart.x + sqEn; x++) {
-		for (int y = eStart.y; y < eStart.y + sqEn; y++) {
-			entities.push_back(Entity(x, y, TEAM_ENEMY));
+void World::init(std::string filename, unsigned int entityCount) {
+
+	std::vector<unsigned char> image; //the raw pixels
+	unsigned width, height;
+
+	//decode
+	unsigned error = lodepng::decode(image, width, height, filename, LCT_RGBA);
+	Pixel* pixels = reinterpret_cast<Pixel*>(image.data());
+
+	if (error) {
+		printf("[lodepng] Failed to load map.\n");
+		return;
+	}
+
+	printf("[World] Loaded map with dimensions: %d x %d \n", width, height);
+
+	dims.x = width; dims.y = height;
+	map = new int[width*height];
+	origMap = new int[width*height];
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int idx = mapIdx(x, y);
+			if (pixels[idx].r == 255) {
+				origMap[idx] = 2;
+			}
+			else {
+				origMap[idx] = 0;
+			}
+			printf("%d", origMap[idx]);
 		}
+		printf("\n");
+	}
+
+	int sqFr = sqrt(entityCount);
+
+	for (int i = 0; i < entityCount; i++) {
+
 	}
 }
