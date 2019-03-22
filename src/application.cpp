@@ -18,7 +18,8 @@ void Application::run()
 
 void Application::init()
 {
-	world.init(100, 100, 10, 20);
+	//world.init(100, 100, 10);
+	world.init("test2.png", 1);
 	world.printEntities();
 
 	renderer.init();
