@@ -7,24 +7,7 @@ World::World() {
 }
 
 World::~World() {
-	delete map;
 	delete origMap;
-}
-
-void World::init(unsigned int width, unsigned int height, unsigned int entityCount) {
-	dims.x = width; dims.y = height;
-
-	map = new int[width*height];
-
-	int sqFr = sqrt(entityCount);
-
-	vec2 fStart(0, 0);
-
-	for (int x = fStart.x; x < fStart.x +sqFr; x++) {
-		for (int y = fStart.y; y < fStart.y + sqFr; y++) {
-			entities.push_back(Entity(x, y, TEAM_FRIENDLY));
-		}
-	}
 }
 
 void World::init(std::string filename, unsigned int entityCount) {
@@ -36,6 +19,7 @@ void World::init(std::string filename, unsigned int entityCount) {
 	unsigned error = lodepng::decode(image, width, height, filename, LCT_RGBA);
 	Pixel* pixels = reinterpret_cast<Pixel*>(image.data());
 
+
 	if (error) {
 		printf("[lodepng] Failed to load map.\n");
 		return;
@@ -44,14 +28,15 @@ void World::init(std::string filename, unsigned int entityCount) {
 	printf("[World] Loaded map with dimensions: %d x %d \n", width, height);
 
 	dims.x = width; dims.y = height;
-	map = new int[width*height];
-	origMap = new int[width*height];
+	origMap = new unsigned char[width*height];
+	mapSize = width * height * sizeof(unsigned char);
+	entitiesSize = entityCount * sizeof(Entity);
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			int idx = mapIdx(x, y);
 			if (pixels[idx].r == 255) {
-				origMap[idx] = 2;
+				origMap[idx] = 1;
 			}
 			else {
 				origMap[idx] = 0;
@@ -61,9 +46,8 @@ void World::init(std::string filename, unsigned int entityCount) {
 		printf("\n");
 	}
 
-	int sqFr = sqrt(entityCount);
-
 	for (int i = 0; i < entityCount; i++) {
-
+		vec2 pos(rand() % width, rand() % height);
+		entities.push_back(Entity(pos.x, pos.y));
 	}
 }

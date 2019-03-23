@@ -8,20 +8,16 @@ struct Pixel {
 
 class World {
 private:
-	std::vector<Entity> entities;
-	int* map;
-	int* origMap;
+	
 	vec2 dims;
 public:
 	World();
 	~World();
-
-	void init(unsigned int width, unsigned int height, unsigned int entityCount);
 	
 	void init(std::string filename, unsigned int entityCount);
 	
-	void addEntity(vec2 pos, unsigned int team) {
-		Entity ent(pos.x, pos.y, team);
+	void addEntity(vec2 pos) {
+		Entity ent(pos.x, pos.y);
 		entities.push_back(ent);
 	}
 
@@ -36,9 +32,9 @@ public:
 	{
 		return dims;
 	}
-	int* getMap() const
+	unsigned char* getMap() const
 	{
-		return map;
+		return origMap;
 	}
 	
 	std::vector<Entity> getEntities() {
@@ -49,5 +45,8 @@ public:
 		return dims.x * y + x;
 	}
 
-
+	int mapSize = 0;
+	int entitiesSize = 0;
+	std::vector<Entity> entities;
+	unsigned char* origMap;
 };

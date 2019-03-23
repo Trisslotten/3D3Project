@@ -159,6 +159,7 @@
     <ClInclude Include="world.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shader.comp" />
     <None Include="shader.frag" />
     <None Include="shader.vert" />
   </ItemGroup>

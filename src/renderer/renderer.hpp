@@ -31,7 +31,7 @@ struct SwapChainSupportDetails
 class Renderer
 {
 public:
-	void init(int* map, vec2 mapdims);
+	void init(unsigned char* map, vec2 mapdims);
 	//void submit();
 	void render();
 	void cleanup();
@@ -39,6 +39,10 @@ public:
 	void submitEntity(Entity e);
 
 	bool windowShouldClose();
+
+	void initCompute(size_t sizeMap, size_t sizeEntites);
+	void mapComputeMemory(void* map, void* entities, size_t mapSize, size_t entitySize);
+	void createComputePipeline();
 private:
 	void createWindow();
 	void createInstance();
@@ -53,6 +57,8 @@ private:
 	void createCommandPools();
 	void createCommandBuffers();
 	void createSyncObjects();
+
+
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -105,4 +111,23 @@ private:
 	VkDebugReportCallbackEXT callback;
 
 	QueueFamilyIndices familyIndices;
+
+
+
+	//compute
+	int preComputedSteps = 20;
+
+	VkDeviceMemory computeMemory;
+	VkBuffer map_buffer;
+	VkBuffer entity_buffer;
+	VkBuffer steps_buffer;
+
+	vec2* astarSteps;
+
+	VkDescriptorSetLayout computeDescriptorSetLayout;
+	VkPipelineLayout computePipelineLayout;
+	VkPipeline computePipeline;
+
+	int alignOffsetEntity = 0;
+	int alignOffsetSteps = 0;
 };
