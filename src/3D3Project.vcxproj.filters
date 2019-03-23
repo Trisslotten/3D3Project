@@ -69,4 +69,8 @@
       <Filter>Header Files\lodepng</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shader.vert" />
+    <None Include="shader.frag" />
+  </ItemGroup>
 </Project>

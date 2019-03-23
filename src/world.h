@@ -28,6 +28,16 @@ public:
 			printf("entity at: %d %d\n", ent.pos.x, ent.pos.y);
 		}
 	}
+
+
+	vec2 getMapDims() const
+	{
+		return dims;
+	}
+	int* getMap() const
+	{
+		return map;
+	}
 	
 	std::vector<Entity> getEntities() {
 		return entities;

@@ -2,6 +2,8 @@
 #include <GLFW/glfw3.h>
 #include <vector>
 #include "..\entity.h"
+#include "../entity.h"
+#include "../world.h"
 
 struct QueueFamilyIndices
 {
@@ -27,10 +29,12 @@ struct SwapChainSupportDetails
 class Renderer
 {
 public:
-	void init();
+	void init(int* map, vec2 mapdims);
 	//void submit();
 	void render();
 	void cleanup();
+
+	void submitEntity(Entity e);
 
 	bool windowShouldClose();
 
@@ -46,6 +50,7 @@ private:
 	void createImageViews();
 	void createRenderPass();
 	void createFramebuffers();
+	void createGraphicsPipeline();
 
 
 
@@ -55,7 +60,7 @@ private:
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
-
+	VkShaderModule createShaderModule(const std::string& filepath);
 
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 	int width = 800;
@@ -73,6 +78,7 @@ private:
 	std::vector<VkImageView> swapChainImageViews;
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	VkRenderPass renderPass;
+	VkPipelineLayout pipelineLayout;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
