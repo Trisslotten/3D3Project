@@ -547,6 +547,64 @@ void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, siz
 	}
 	res = vkBindBufferMemory(device, steps_buffer, computeMemory, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
 
+	VkDescriptorBufferInfo map_descriptorBufferInfo = {
+	  map_buffer,
+	  0,
+	  VK_WHOLE_SIZE
+	};
+
+	VkDescriptorBufferInfo entity_descriptorBufferInfo = {
+	  entity_buffer,
+	  0,
+	  VK_WHOLE_SIZE
+	};
+
+	VkDescriptorBufferInfo steps_descriptorBufferInfo = {
+	  steps_buffer,
+	  0,
+	  VK_WHOLE_SIZE
+	};
+
+	VkWriteDescriptorSet computeWriteDescriptorSet[3] = {
+		  {
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			computeDescriptorSet,
+			0,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&map_descriptorBufferInfo,
+			0
+		  },
+		  {
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			computeDescriptorSet,
+			1,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&entity_descriptorBufferInfo,
+			0
+		  },
+		{
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			computeDescriptorSet,
+			2,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&steps_descriptorBufferInfo,
+			0
+		  }
+	};
+	vkUpdateDescriptorSets(device, 3, computeWriteDescriptorSet, 0, 0);
+
 	if (res == VK_SUCCESS) {
 		printf("Mapped compute memory successfully!\n");
 	}
@@ -568,13 +626,13 @@ void Renderer::executeCompute() {
 	vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
 	vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
-		pipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
+		computePipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
 
-	vkCmdDispatch(computeCommandBuffer, 128, 1, 1);
+	vkCmdDispatch(computeCommandBuffer, numEntities, 1, 1);
 
 	vkEndCommandBuffer(computeCommandBuffer);
 
-	vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &computeQueue);
+	//vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &computeQueue);
 
 	VkSubmitInfo submitInfo = {
 	  VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -597,8 +655,8 @@ void Renderer::executeCompute() {
 	memcpy(astarSteps, (void*)((uintptr_t)data + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps), stepsSize);
 	vkUnmapMemory(device, computeMemory);
 
-	for (int i = 0; i < preComputedSteps; i++) {
-		printf("entity %d should step: %d %d \n", i, astarSteps[i].x, astarSteps[i].y);
+	for (int i = 0; i < numEntities; i++) {
+		printf("entity %d should step: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
 	}
 }
 
@@ -649,6 +707,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	vkCreateBuffer(device, &bufferCreateInfo, 0, &steps_buffer);
 
 	VkMemoryRequirements reqs;
+	vkGetBufferMemoryRequirements(device, map_buffer, &reqs);
 	vkGetBufferMemoryRequirements(device, entity_buffer, &reqs);
 	alignOffsetEntity = reqs.alignment - (sizeMap % reqs.alignment);
 	vkGetBufferMemoryRequirements(device, steps_buffer, &reqs);
@@ -790,63 +849,7 @@ void Renderer::createComputeDescriptorSets() {
 
 	vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &computeDescriptorSet);
 
-	VkDescriptorBufferInfo map_descriptorBufferInfo = {
-	  map_buffer,
-	  0,
-	  VK_WHOLE_SIZE
-	};
-
-	VkDescriptorBufferInfo entity_descriptorBufferInfo = {
-	  entity_buffer,
-	  0,
-	  VK_WHOLE_SIZE
-	};
-
-	VkDescriptorBufferInfo steps_descriptorBufferInfo = {
-	  steps_buffer,
-	  0,
-	  VK_WHOLE_SIZE
-	};
-
-	VkWriteDescriptorSet computeWriteDescriptorSet[3] = {
-		  {
-			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			0,
-			computeDescriptorSet,
-			0,
-			0,
-			1,
-			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			0,
-			&map_descriptorBufferInfo,
-			0
-		  },
-		  {
-			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			0,
-			computeDescriptorSet,
-			1,
-			0,
-			1,
-			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			0,
-			&entity_descriptorBufferInfo,
-			0
-		  },
-		{
-			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-			0,
-			computeDescriptorSet,
-			2,
-			0,
-			1,
-			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-			0,
-			&steps_descriptorBufferInfo,
-			0
-		  }
-	};
-	vkUpdateDescriptorSets(device, 3, computeWriteDescriptorSet, 0, 0);
+	
 }
 
 void Renderer::createComputeCommandPools() {
