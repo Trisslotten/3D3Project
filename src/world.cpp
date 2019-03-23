@@ -10,19 +10,6 @@ World::~World() {
 	delete origMap;
 }
 
-void World::init(unsigned int width, unsigned int height, unsigned int entityCount) {
-	dims.x = width; dims.y = height;
-	int sqFr = sqrt(entityCount);
-
-	vec2 fStart(0, 0);
-
-	for (int x = fStart.x; x < fStart.x +sqFr; x++) {
-		for (int y = fStart.y; y < fStart.y + sqFr; y++) {
-			entities.push_back(Entity(x, y, TEAM_FRIENDLY));
-		}
-	}
-}
-
 void World::init(std::string filename, unsigned int entityCount) {
 
 	std::vector<unsigned char> image; //the raw pixels
@@ -59,11 +46,8 @@ void World::init(std::string filename, unsigned int entityCount) {
 		printf("\n");
 	}
 
-	int sqFr = sqrt(entityCount);
-
-	for (int x = 0; x < sqFr; x++) {
-		for (int y = 0; y < sqFr; y++) {
-			entities.push_back(Entity(x, y, TEAM_FRIENDLY));
-		}
+	for (int i = 0; i < entityCount; i++) {
+		vec2 pos(rand() % width, rand() % height);
+		entities.push_back(Entity(pos.x, pos.y));
 	}
 }

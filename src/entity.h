@@ -1,8 +1,5 @@
 #pragma once
 
-#define TEAM_FRIENDLY 0
-#define TEAM_ENEMY 1
-
 struct vec2 {
 	unsigned int x;
 	unsigned int y;
@@ -15,17 +12,14 @@ struct vec2 {
 
 struct Entity {
 	vec2 pos;
-	unsigned int team;
 
 	Entity() {
 		pos.x = 0;
 		pos.y = 0;
-		team = TEAM_FRIENDLY;
 	}
-	Entity(unsigned int tx, unsigned int ty, unsigned int t) {
+	Entity(unsigned int tx, unsigned int ty) {
 		pos.x = tx;
 		pos.y = ty;
-		team = t;
 	}
 
 	void move(vec2 mv) {

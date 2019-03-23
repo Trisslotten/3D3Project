@@ -37,8 +37,9 @@ public:
 
 	bool windowShouldClose();
 
-	void allocateComputeMemory(size_t sizeMap, size_t sizeEntites);
+	void initCompute(size_t sizeMap, size_t sizeEntites);
 	void mapComputeMemory(void* map, void* entities, size_t mapSize, size_t entitySize);
+	void createComputePipeline();
 private:
 	void createWindow();
 	void createInstance();
@@ -101,6 +102,8 @@ private:
 	vec2* astarSteps;
 
 	VkDescriptorSetLayout computeDescriptorSetLayout;
+	VkPipelineLayout computePipelineLayout;
+	VkPipeline computePipeline;
 
 	int alignOffsetEntity = 0;
 	int alignOffsetSteps = 0;

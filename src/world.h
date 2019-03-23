@@ -13,13 +13,11 @@ private:
 public:
 	World();
 	~World();
-
-	void init(unsigned int width, unsigned int height, unsigned int entityCount);
 	
 	void init(std::string filename, unsigned int entityCount);
 	
-	void addEntity(vec2 pos, unsigned int team) {
-		Entity ent(pos.x, pos.y, team);
+	void addEntity(vec2 pos) {
+		Entity ent(pos.x, pos.y);
 		entities.push_back(ent);
 	}
 

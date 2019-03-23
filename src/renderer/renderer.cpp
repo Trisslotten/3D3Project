@@ -415,7 +415,7 @@ void Renderer::createFramebuffers()
 	}
 }
 
-void Renderer::allocateComputeMemory(size_t sizeMap, size_t sizeEntites)
+void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 {
 	int stepsSize = (sizeEntites / sizeof(Entity)) * preComputedSteps;
 	astarSteps = new vec2[stepsSize];
@@ -460,7 +460,7 @@ void Renderer::allocateComputeMemory(size_t sizeMap, size_t sizeEntites)
 	vkGetBufferMemoryRequirements(device, entity_buffer, &reqs);
 	alignOffsetEntity = reqs.alignment - (sizeMap % reqs.alignment);
 	vkGetBufferMemoryRequirements(device, steps_buffer, &reqs);
-	alignOffsetSteps = reqs.alignment - (sizeMap % reqs.alignment);
+	alignOffsetSteps = reqs.alignment - ((sizeMap+alignOffsetEntity+sizeEntites) % reqs.alignment);
 
 	VkPhysicalDeviceMemoryProperties properties;
 
@@ -528,7 +528,10 @@ void Renderer::allocateComputeMemory(size_t sizeMap, size_t sizeEntites)
 	  descriptorSetLayoutBindings
 	};
 
-	vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, 0, &computeDescriptorSetLayout);
+	if (vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, 0, &computeDescriptorSetLayout) != VK_SUCCESS) {
+		printf("Failed to create compute descriptor set layout!\n");
+	}
+	createComputePipeline();
 }
 
 void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, size_t entitiesSize)
@@ -540,7 +543,14 @@ void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, siz
 	vkUnmapMemory(device, computeMemory);
 
 	res = vkBindBufferMemory(device, map_buffer, computeMemory, 0);
+	if (res != VK_SUCCESS) {
+		printf("Failed to bind map buffer!\n");
+	}
 	res = vkBindBufferMemory(device, entity_buffer, computeMemory, mapSize+alignOffsetEntity);
+	if (res != VK_SUCCESS) {
+		printf("Failed to bind entity buffer!\n");
+	}
+	res = vkBindBufferMemory(device, steps_buffer, computeMemory, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
 
 	if (res == VK_SUCCESS) {
 		printf("Mapped compute memory successfully!\n");
@@ -548,6 +558,42 @@ void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, siz
 	else {
 		printf("Failed to map compute memory!\n");
 	}
+}
+
+void Renderer::createComputePipeline() {
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = {
+	  VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+	  0,
+	  0,
+	  1,
+	  &computeDescriptorSetLayout,
+	  0,
+	  0
+	};
+
+	vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, 0, &computePipelineLayout);
+
+	VkShaderModule shader_module = createShaderModule("shader.comp");
+
+	VkComputePipelineCreateInfo computePipelineCreateInfo = {
+	  VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+	  0,
+	  0,
+	  {
+		VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		0,
+		0,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		shader_module,
+		"main",
+		0
+	  },
+	  computePipelineLayout,
+	  0,
+	  0
+	};
+
+	vkCreateComputePipelines(device, 0, 1, &computePipelineCreateInfo, 0, &computePipeline);
 }
 
 void Renderer::createGraphicsPipeline()
@@ -816,5 +862,3 @@ VkShaderModule Renderer::createShaderModule(const std::string& filepath)
 
 	return shaderModule;
 }
-
-
