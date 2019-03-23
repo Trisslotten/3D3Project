@@ -529,10 +529,87 @@ void Renderer::createFramebuffers()
 	}
 }
 
+void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, size_t entitiesSize)
+{
+	void *payload;
+	VkResult res = vkMapMemory(device, computeMemory, 0, mapSize + entitiesSize, 0, &payload);
+	memcpy(payload, map, mapSize);
+	memcpy((void*)((uintptr_t)payload + mapSize + alignOffsetEntity), entities, entitiesSize);
+	vkUnmapMemory(device, computeMemory);
+
+	res = vkBindBufferMemory(device, map_buffer, computeMemory, 0);
+	if (res != VK_SUCCESS) {
+		printf("Failed to bind map buffer!\n");
+	}
+	res = vkBindBufferMemory(device, entity_buffer, computeMemory, mapSize + alignOffsetEntity);
+	if (res != VK_SUCCESS) {
+		printf("Failed to bind entity buffer!\n");
+	}
+	res = vkBindBufferMemory(device, steps_buffer, computeMemory, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
+
+	if (res == VK_SUCCESS) {
+		printf("Mapped compute memory successfully!\n");
+	}
+	else {
+		printf("Failed to map compute memory!\n");
+	}
+}
+
+void Renderer::executeCompute() {
+	VkCommandBufferBeginInfo commandBufferBeginInfo = {
+	  VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+	  0,
+	  VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+	  0
+	};
+
+	vkBeginCommandBuffer(computeCommandBuffer, &commandBufferBeginInfo);
+
+	vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+
+	vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
+		pipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
+
+	vkCmdDispatch(computeCommandBuffer, numEntities, 1, 1);
+
+	vkEndCommandBuffer(computeCommandBuffer);
+
+	VkQueue queue;
+	vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &queue);
+
+	VkSubmitInfo submitInfo = {
+	  VK_STRUCTURE_TYPE_SUBMIT_INFO,
+	  0,
+	  0,
+	  0,
+	  0,
+	  1,
+	  &computeCommandBuffer,
+	  0,
+	  0
+	};
+
+	vkQueueSubmit(queue, 1, &submitInfo, 0);
+
+	vkQueueWaitIdle(computeQueue);
+
+	void* data;
+	vkMapMemory(device, computeMemory, 0, memorySize, 0, &data);
+	memcpy(astarSteps, (void*)((uintptr_t)data + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps), stepsSize);
+	vkUnmapMemory(device, computeMemory);
+
+
+}
+
 void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 {
-	int stepsSize = (sizeEntites / sizeof(Entity)) * preComputedSteps;
-	astarSteps = new vec2[stepsSize];
+	mapSize = sizeMap;
+	entitiesSize = sizeEntites;
+	
+	numEntities = sizeEntites / sizeof(Entity);
+	int stepLen = numEntities * preComputedSteps;
+	astarSteps = new vec2[stepLen];
+	stepsSize = stepLen * sizeof(vec2);
 	
 	VkBufferCreateInfo bufferCreateInfo = {
 	  VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -562,7 +639,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	  VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
 	  0,
 	  0,
-	  stepsSize * sizeof(vec2),
+	  stepLen * sizeof(vec2),
 	  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
 	  VK_SHARING_MODE_EXCLUSIVE,
 	  1,
@@ -582,7 +659,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 
 
 
-	VkDeviceSize memorySize = sizeMap + sizeEntites + stepsSize * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps;
+	memorySize = sizeMap + sizeEntites + stepLen * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps;
 
 	// set memoryTypeIndex to an invalid entry in the properties.memoryTypes array
 	uint32_t memoryTypeIndex = VK_MAX_MEMORY_TYPES;
@@ -646,32 +723,8 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 		printf("Failed to create compute descriptor set layout!\n");
 	}
 	createComputePipeline();
-}
-
-void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, size_t entitiesSize)
-{
-	void *payload;
-	VkResult res = vkMapMemory(device, computeMemory, 0, mapSize+ entitiesSize, 0, &payload);
-	memcpy(payload, map, mapSize);
-	memcpy((void*)((uintptr_t)payload+mapSize+alignOffsetEntity), entities, entitiesSize);
-	vkUnmapMemory(device, computeMemory);
-
-	res = vkBindBufferMemory(device, map_buffer, computeMemory, 0);
-	if (res != VK_SUCCESS) {
-		printf("Failed to bind map buffer!\n");
-	}
-	res = vkBindBufferMemory(device, entity_buffer, computeMemory, mapSize+alignOffsetEntity);
-	if (res != VK_SUCCESS) {
-		printf("Failed to bind entity buffer!\n");
-	}
-	res = vkBindBufferMemory(device, steps_buffer, computeMemory, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
-
-	if (res == VK_SUCCESS) {
-		printf("Mapped compute memory successfully!\n");
-	}
-	else {
-		printf("Failed to map compute memory!\n");
-	}
+	createComputeDescriptorSets();
+	createComputeCommandPools();
 }
 
 void Renderer::createComputePipeline() {
@@ -707,6 +760,113 @@ void Renderer::createComputePipeline() {
 	};
 
 	vkCreateComputePipelines(device, 0, 1, &computePipelineCreateInfo, 0, &computePipeline);
+}
+
+void Renderer::createComputeDescriptorSets() {
+	VkDescriptorPoolSize descriptorPoolSize = {
+	  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+	  3
+	};
+
+	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo = {
+	  VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+	  0,
+	  0,
+	  1,
+	  1,
+	  &descriptorPoolSize
+	};
+
+	vkCreateDescriptorPool(device, &descriptorPoolCreateInfo, 0, &computeDescriptorPool);
+
+	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo = {
+	  VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+	  0,
+	  computeDescriptorPool,
+	  1,
+	  &computeDescriptorSetLayout
+	};
+
+	vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &computeDescriptorSet);
+
+	VkDescriptorBufferInfo map_descriptorBufferInfo = {
+	  map_buffer,
+	  0,
+	  VK_WHOLE_SIZE
+	};
+
+	VkDescriptorBufferInfo entity_descriptorBufferInfo = {
+	  entity_buffer,
+	  0,
+	  VK_WHOLE_SIZE
+	};
+
+	VkDescriptorBufferInfo steps_descriptorBufferInfo = {
+	  steps_buffer,
+	  0,
+	  VK_WHOLE_SIZE
+	};
+
+	VkWriteDescriptorSet computeWriteDescriptorSet[3] = {
+		  {
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			computeDescriptorSet,
+			0,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&map_descriptorBufferInfo,
+			0
+		  },
+		  {
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			computeDescriptorSet,
+			1,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&entity_descriptorBufferInfo,
+			0
+		  },
+		{
+			VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+			0,
+			computeDescriptorSet,
+			2,
+			0,
+			1,
+			VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+			0,
+			&steps_descriptorBufferInfo,
+			0
+		  }
+	};
+	vkUpdateDescriptorSets(device, 3, computeWriteDescriptorSet, 0, 0);
+}
+
+void Renderer::createComputeCommandPools() {
+	VkCommandPoolCreateInfo commandPoolCreateInfo = {
+	  VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+	  0,
+	  0,
+	  familyIndices.computeFamily
+	};
+
+	vkCreateCommandPool(device, &commandPoolCreateInfo, 0, &computeCommandPool);
+
+	VkCommandBufferAllocateInfo commandBufferAllocateInfo = {
+	  VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+	  0,
+	  computeCommandPool,
+	  VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+	  1
+	};
+
+	vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &computeCommandBuffer);
 }
 
 void Renderer::createGraphicsPipeline()

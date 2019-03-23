@@ -42,7 +42,7 @@ public:
 
 	void initCompute(size_t sizeMap, size_t sizeEntites);
 	void mapComputeMemory(void* map, void* entities, size_t mapSize, size_t entitySize);
-	void createComputePipeline();
+	void executeCompute();
 private:
 	void createWindow();
 	void createInstance();
@@ -57,6 +57,9 @@ private:
 	void createCommandPools();
 	void createCommandBuffers();
 	void createSyncObjects();
+	void createComputePipeline();
+	void createComputeCommandPools();
+	void createComputeDescriptorSets();
 
 
 
@@ -116,6 +119,11 @@ private:
 
 	//compute
 	int preComputedSteps = 20;
+	int numEntities = 0;
+	size_t mapSize;
+	size_t entitiesSize;
+	size_t stepsSize;
+	VkDeviceSize memorySize;
 
 	VkDeviceMemory computeMemory;
 	VkBuffer map_buffer;
@@ -125,8 +133,13 @@ private:
 	vec2* astarSteps;
 
 	VkDescriptorSetLayout computeDescriptorSetLayout;
+	VkDescriptorSet computeDescriptorSet;
 	VkPipelineLayout computePipelineLayout;
 	VkPipeline computePipeline;
+	VkDescriptorPool computeDescriptorPool;
+	VkCommandPool computeCommandPool;
+	VkCommandBuffer computeCommandBuffer;
+	VkWriteDescriptorSet computeWriteDescriptorSet[3];
 
 	int alignOffsetEntity = 0;
 	int alignOffsetSteps = 0;

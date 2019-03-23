@@ -1,23 +1,18 @@
 #version 450 core
 
 layout(local_size_x_id = 0, local_size_y_id = 1) in; // workgroup size defined with specialization constants. On cpp side there is associated SpecializationInfo entry in PipelineShaderStageCreateInfo
-layout(push_constant) uniform Parameters {           // specify push constants. on cpp side its layout is fixed at PipelineLayout, and values are provided via vk::CommandBuffer::pushConstants()
-   uint Width;
-   uint Height;
-	float a;
-} params;
 
 struct Entity {
 	vec2 pos;
 };
 
-layout(binding = 0, set = 0) buffer lay0{
+layout(binding = 0) buffer lay0{
 	int map[];
 };
-layout(binding = 0, set = 1) buffer lay1{
+layout(binding = 1) buffer lay1{
 	Entity entities[];
 };
-layout(binding = 0, set = 2) buffer lay2{
+layout(binding = 2) buffer lay2{
 	vec2 steps[][20];
 };
 
