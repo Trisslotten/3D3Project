@@ -91,7 +91,6 @@ void Renderer::render()
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
-	
 	*/
 	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
 	{
@@ -113,7 +112,6 @@ void Renderer::render()
 		});
 	}
 	threadPool.waitForAll();
-
 	/*
 	//VkCommandBuffer currentCommandBuffer = commandBuffers[imageIndex];
 
