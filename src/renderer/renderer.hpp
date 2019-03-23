@@ -68,7 +68,7 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkShaderModule createShaderModule(const std::string& filepath);
 
-	void threadRecordCommand();
+	void threadRecordCommand(int threadID);
 
 	int commandIndex(int threadID)
 	{

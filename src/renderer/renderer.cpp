@@ -96,7 +96,20 @@ void Renderer::render()
 	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
 	{
 		threadPool.submit([this, i] {
-			
+			int index = commandIndex(i);
+			VkCommandBuffer cmdBuffer = this->entityCommandBuffers[index];
+
+			VkCommandBufferBeginInfo beginInfo = {};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+
+			if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS)
+				throw std::runtime_error("failed to begin recording command buffer!");
+			{
+				vkCmdDraw(cmdBuffer, 4, 1, 0, 0);
+			}
+			if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS)
+				throw std::runtime_error("failed to record command buffer!");
 		});
 	}
 	threadPool.waitForAll();
@@ -671,7 +684,6 @@ void Renderer::createComputePipeline() {
 	  0,
 	  0
 	};
-
 	vkCreatePipelineLayout(device, &pipelineLayoutCreateInfo, 0, &computePipelineLayout);
 
 	VkShaderModule shader_module = createShaderModule("shader.comp");
@@ -1040,7 +1052,7 @@ VkShaderModule Renderer::createShaderModule(const std::string& filepath)
 	return shaderModule;
 }
 
-void Renderer::threadRecordCommand()
+void Renderer::threadRecordCommand(int threadID)
 {
 }
 
