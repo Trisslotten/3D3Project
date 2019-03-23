@@ -2,10 +2,14 @@
 #include <iostream>
 #include "application.hpp"
 
+int GLOBAL_NUM_THREADS(4);
+
 int main(void)
 {
-	Application app;
+	// TODO: set num threads from program arguments
+	GLOBAL_NUM_THREADS = 4;
 
+	Application app;
 	try
 	{
 		app.run();

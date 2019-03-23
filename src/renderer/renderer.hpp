@@ -3,6 +3,9 @@
 #include <vector>
 #include "../entity.h"
 #include "../world.h"
+#include "../util/threadpool.hpp"
+
+extern int GLOBAL_NUM_THREADS;
 
 struct QueueFamilyIndices
 {
@@ -47,6 +50,9 @@ private:
 	void createRenderPass();
 	void createFramebuffers();
 	void createGraphicsPipeline();
+	void createCommandPools();
+	void createCommandBuffers();
+	void createSyncObjects();
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -56,10 +62,20 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkShaderModule createShaderModule(const std::string& filepath);
 
+	void threadRecordCommand();
+
+	int commandIndex(int threadID)
+	{
+		return threadID + currentFrame * GLOBAL_NUM_THREADS;
+	}
+
 	const int MAX_FRAMES_IN_FLIGHT = 2;
+	size_t currentFrame = 0;
 	int width = 800;
 	int height = 600;
 	GLFWwindow* window;
+	ThreadPool threadPool;
+	std::vector<Entity> toDraw;
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -73,6 +89,13 @@ private:
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
+	std::vector<VkCommandPool> commandPools;
+	std::vector<VkCommandBuffer> entityCommandBuffers;
+	std::vector<VkCommandBuffer> primCommandBuffers;
+
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence> inFlightFences;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;

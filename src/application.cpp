@@ -27,7 +27,7 @@ void Application::init()
 
 void Application::update()
 {
-
+	renderer.render();
 }
 
 void Application::cleanup()
