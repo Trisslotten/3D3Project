@@ -1038,7 +1038,6 @@ VkShaderModule Renderer::createShaderModule(const std::string& filepath)
 	}
 
 	return shaderModule;
-	void Renderer::threadRecordCommand()
 }
 
 void Renderer::threadRecordCommand()
