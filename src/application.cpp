@@ -22,10 +22,11 @@ void Application::init()
 	world.init("test2.png", 8);
 	world.printEntities();
 
-	renderer.init();
+	//renderer.init();
+	renderer.init(world.getMap(), world.getMapDims());
 	renderer.allocateComputeMemory(world.mapSize, world.entitiesSize);
 	renderer.mapComputeMemory(world.origMap, world.entities.data(), world.mapSize, world.entitiesSize);
-	renderer.init(world.getMap(), world.getMapDims());
+	
 }
 
 void Application::update()

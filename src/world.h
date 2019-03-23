@@ -34,9 +34,9 @@ public:
 	{
 		return dims;
 	}
-	int* getMap() const
+	unsigned char* getMap() const
 	{
-		return map;
+		return origMap;
 	}
 	
 	std::vector<Entity> getEntities() {

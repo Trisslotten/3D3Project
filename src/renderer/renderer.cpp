@@ -57,7 +57,7 @@ const std::vector<const char*> deviceExtensions = {
 };
 
 
-void Renderer::init(int* map, vec2 mapdims)
+void Renderer::init(unsigned char* map, vec2 mapdims)
 {
 	createWindow();
 	createInstance();

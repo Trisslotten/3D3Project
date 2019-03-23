@@ -1,7 +1,6 @@
 #pragma once
 #include <GLFW/glfw3.h>
 #include <vector>
-#include "..\entity.h"
 #include "../entity.h"
 #include "../world.h"
 
@@ -29,7 +28,7 @@ struct SwapChainSupportDetails
 class Renderer
 {
 public:
-	void init(int* map, vec2 mapdims);
+	void init(unsigned char* map, vec2 mapdims);
 	//void submit();
 	void render();
 	void cleanup();
