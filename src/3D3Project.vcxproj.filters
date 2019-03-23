@@ -33,14 +33,14 @@
     <ClCompile Include="util\threadpool.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="world.cpp">
-      <Filter>Header Files</Filter>
-    </ClCompile>
     <ClCompile Include="lodepng\lodepng_util.cpp">
       <Filter>Source Files\lodepng</Filter>
     </ClCompile>
     <ClCompile Include="lodepng\lodepng.cpp">
       <Filter>Source Files\lodepng</Filter>
+    </ClCompile>
+    <ClCompile Include="world.cpp">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

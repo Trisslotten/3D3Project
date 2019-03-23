@@ -1,6 +1,7 @@
 #pragma once
 #include <GLFW/glfw3.h>
 #include <vector>
+#include "..\entity.h"
 
 struct QueueFamilyIndices
 {
@@ -32,6 +33,9 @@ public:
 	void cleanup();
 
 	bool windowShouldClose();
+
+	void allocateComputeMemory(size_t sizeMap, size_t sizeEntites);
+	void mapComputeMemory(void* map, void* entities, size_t mapSize, size_t entitySize);
 private:
 	void createWindow();
 	void createInstance();
@@ -42,6 +46,8 @@ private:
 	void createImageViews();
 	void createRenderPass();
 	void createFramebuffers();
+
+
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -76,4 +82,21 @@ private:
 	VkDebugReportCallbackEXT callback;
 
 	QueueFamilyIndices familyIndices;
+
+
+
+	//compute
+	int preComputedSteps = 20;
+
+	VkDeviceMemory computeMemory;
+	VkBuffer map_buffer;
+	VkBuffer entity_buffer;
+	VkBuffer steps_buffer;
+
+	vec2* astarSteps;
+
+	VkDescriptorSetLayout computeDescriptorSetLayout;
+
+	int alignOffsetEntity = 0;
+	int alignOffsetSteps = 0;
 };

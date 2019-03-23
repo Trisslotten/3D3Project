@@ -19,10 +19,12 @@ void Application::run()
 void Application::init()
 {
 	//world.init(100, 100, 10);
-	world.init("test2.png", 1);
+	world.init("test2.png", 8);
 	world.printEntities();
 
 	renderer.init();
+	renderer.allocateComputeMemory(world.mapSize, world.entitiesSize);
+	renderer.mapComputeMemory(world.origMap, world.entities.data(), world.mapSize, world.entitiesSize);
 }
 
 void Application::update()

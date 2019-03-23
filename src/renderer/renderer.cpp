@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <glm/glm.hpp>
+#include <stdint.h>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -403,6 +404,141 @@ void Renderer::createFramebuffers()
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS)
 			throw std::runtime_error("failed to create framebuffer!");
+	}
+}
+
+void Renderer::allocateComputeMemory(size_t sizeMap, size_t sizeEntites)
+{
+	int stepsSize = (sizeEntites / sizeof(Entity)) * preComputedSteps;
+	astarSteps = new vec2[stepsSize];
+	
+	VkBufferCreateInfo bufferCreateInfo = {
+	  VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+	  0,
+	  0,
+	  sizeMap,
+	  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+	  VK_SHARING_MODE_EXCLUSIVE,
+	  1,
+	  (uint32_t*)(&familyIndices.transferFamily)
+	};
+	vkCreateBuffer(device, &bufferCreateInfo, 0, &map_buffer);
+	
+	bufferCreateInfo = {
+	  VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+	  0,
+	  0,
+	  sizeEntites,
+	  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+	  VK_SHARING_MODE_EXCLUSIVE,
+	  1,
+	  (uint32_t*)(&familyIndices.transferFamily)
+	};
+	vkCreateBuffer(device, &bufferCreateInfo, 0, &entity_buffer);
+
+	bufferCreateInfo = {
+	  VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+	  0,
+	  0,
+	  stepsSize * sizeof(vec2),
+	  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+	  VK_SHARING_MODE_EXCLUSIVE,
+	  1,
+	  (uint32_t*)(&familyIndices.transferFamily)
+	};
+	vkCreateBuffer(device, &bufferCreateInfo, 0, &steps_buffer);
+
+	VkMemoryRequirements reqs;
+	vkGetBufferMemoryRequirements(device, entity_buffer, &reqs);
+	alignOffsetEntity = reqs.alignment - (sizeMap % reqs.alignment);
+	vkGetBufferMemoryRequirements(device, steps_buffer, &reqs);
+	alignOffsetSteps = reqs.alignment - (sizeMap % reqs.alignment);
+
+	VkPhysicalDeviceMemoryProperties properties;
+
+	vkGetPhysicalDeviceMemoryProperties(physicalDevice, &properties);
+
+
+
+	VkDeviceSize memorySize = sizeMap + sizeEntites + stepsSize * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps;
+
+	// set memoryTypeIndex to an invalid entry in the properties.memoryTypes array
+	uint32_t memoryTypeIndex = VK_MAX_MEMORY_TYPES;
+
+	for (uint32_t k = 0; k < properties.memoryTypeCount; k++) {
+		if ((VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT & properties.memoryTypes[k].propertyFlags) &&
+			(VK_MEMORY_PROPERTY_HOST_COHERENT_BIT & properties.memoryTypes[k].propertyFlags) &&
+			(memorySize < properties.memoryHeaps[properties.memoryTypes[k].heapIndex].size)) {
+			memoryTypeIndex = k;
+			break;
+		}
+	}
+
+	const VkMemoryAllocateInfo memoryAllocateInfo = {
+	  VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+	  0,
+	  memorySize,
+	  memoryTypeIndex
+	};
+
+	if (vkAllocateMemory(device, &memoryAllocateInfo, 0, &computeMemory) == VK_SUCCESS) {
+		printf("Allocated compute memory!\n");
+	}
+	else {
+		printf("Failed to allocate compute memory!\n");
+	}
+
+	VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[3] = {
+	  {
+		0,
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		1,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0
+	  },
+	  {
+		1,
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		1,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0
+	  },
+	  {
+		2,
+		VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+		1,
+		VK_SHADER_STAGE_COMPUTE_BIT,
+		0
+	  }
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+	  VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+	  0,
+	  0,
+	  3,
+	  descriptorSetLayoutBindings
+	};
+
+	vkCreateDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, 0, &computeDescriptorSetLayout);
+}
+
+void Renderer::mapComputeMemory(void * map, void * entities, size_t mapSize, size_t entitiesSize)
+{
+	void *payload;
+	VkResult res = vkMapMemory(device, computeMemory, 0, mapSize+ entitiesSize, 0, &payload);
+	memcpy(payload, map, mapSize);
+	memcpy((void*)((uintptr_t)payload+mapSize+alignOffsetEntity), entities, entitiesSize);
+	vkUnmapMemory(device, computeMemory);
+
+	res = vkBindBufferMemory(device, map_buffer, computeMemory, 0);
+	res = vkBindBufferMemory(device, entity_buffer, computeMemory, mapSize+alignOffsetEntity);
+
+	if (res == VK_SUCCESS) {
+		printf("Mapped compute memory successfully!\n");
+	}
+	else {
+		printf("Failed to map compute memory!\n");
 	}
 }
 

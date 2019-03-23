@@ -8,9 +8,7 @@ struct Pixel {
 
 class World {
 private:
-	std::vector<Entity> entities;
-	int* map;
-	int* origMap;
+	
 	vec2 dims;
 public:
 	World();
@@ -39,5 +37,8 @@ public:
 		return dims.x * y + x;
 	}
 
-
+	int mapSize = 0;
+	int entitiesSize = 0;
+	std::vector<Entity> entities;
+	unsigned char* origMap;
 };
