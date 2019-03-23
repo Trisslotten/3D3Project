@@ -568,12 +568,11 @@ void Renderer::executeCompute() {
 	vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
 		pipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
 
-	vkCmdDispatch(computeCommandBuffer, numEntities, 1, 1);
+	vkCmdDispatch(computeCommandBuffer, 128, 1, 1);
 
 	vkEndCommandBuffer(computeCommandBuffer);
 
-	VkQueue queue;
-	vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &queue);
+	vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &computeQueue);
 
 	VkSubmitInfo submitInfo = {
 	  VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -587,7 +586,7 @@ void Renderer::executeCompute() {
 	  0
 	};
 
-	vkQueueSubmit(queue, 1, &submitInfo, 0);
+	vkQueueSubmit(computeQueue, 1, &submitInfo, 0);
 
 	vkQueueWaitIdle(computeQueue);
 
@@ -596,7 +595,9 @@ void Renderer::executeCompute() {
 	memcpy(astarSteps, (void*)((uintptr_t)data + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps), stepsSize);
 	vkUnmapMemory(device, computeMemory);
 
-
+	for (int i = 0; i < preComputedSteps; i++) {
+		printf("entity %d should step: %d %d \n", i, astarSteps[i].x, astarSteps[i].y);
+	}
 }
 
 void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
