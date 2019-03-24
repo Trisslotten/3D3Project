@@ -47,7 +47,7 @@ public:
 	bool windowShouldClose();
 
 	void initCompute(size_t sizeMap, size_t sizeEntites);
-	void mapComputeMemory(void* map, void* entities, size_t mapSize, size_t entitySize);
+	void mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goal, size_t mapSize, size_t entitySize);
 	void executeCompute();
 private:
 	void createWindow();
@@ -71,6 +71,10 @@ private:
 	void createComputePipeline();
 	void createComputeCommandPools();
 	void createComputeDescriptorSets();
+
+	void createTransferCommandBuffer();
+	void transferComputeDataToDevice();
+	void transferComputeDataToHost();
 
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
@@ -140,7 +144,11 @@ private:
 
 	QueueFamilyIndices familyIndices;
 
+	//transfer
+	VkCommandPool transferCommandPool;
+	VkCommandBuffer transferCommandBuffer;
 
+	VkFence fen_transfer;
 
 	//compute
 	int preComputedSteps = 20;
@@ -150,10 +158,19 @@ private:
 	size_t stepsSize;
 	VkDeviceSize memorySize;
 
-	VkDeviceMemory computeMemory;
-	VkBuffer map_buffer;
-	VkBuffer entity_buffer;
-	VkBuffer steps_buffer;
+	VkSemaphore sem_transferToDevice;
+	VkSemaphore sem_computeDone;
+
+	VkDeviceMemory computeMemory_dst;
+	VkDeviceMemory computeMemory_src;
+	VkBuffer map_buffer_dst;
+	VkBuffer map_buffer_src;
+	VkBuffer entity_buffer_dst;
+	VkBuffer entity_buffer_src;
+	VkBuffer steps_buffer_dst;
+	VkBuffer steps_buffer_src;
+	VkBuffer dimsgoal_src;
+	VkBuffer dimsgoal_dst;
 
 	vec2* astarSteps;
 
@@ -168,4 +185,5 @@ private:
 
 	int alignOffsetEntity = 0;
 	int alignOffsetSteps = 0;
+	int alignOffsetDimsGoal = 0;
 };
