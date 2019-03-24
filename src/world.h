@@ -32,7 +32,7 @@ public:
 	{
 		return dims;
 	}
-	unsigned char* getMap() const
+	unsigned int* getMap() const
 	{
 		return origMap;
 	}
@@ -48,7 +48,7 @@ public:
 	int mapSize = 0;
 	int entitiesSize = 0;
 	std::vector<Entity> entities;
-	unsigned char* origMap;
+	unsigned int* origMap;
 
 	vec2 goal;
 };

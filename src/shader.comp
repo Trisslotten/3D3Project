@@ -24,8 +24,19 @@ layout(binding = 3) buffer lay3{
 	Dimsgoal dg;
 };
 
+uint posToMapIdx(uvec2 pos) {
+	return pos.y*dg.dims.x + pos.x;
+}
+
+uint r(uvec2 pos) {
+	return abs(int(dg.goal.x) - int(pos.x)) + abs(int(dg.goal.y) - int(pos.y));
+}
+
+uint id;
+
 void main() {
-	const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
+	 id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
 	steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
-	steps[id][1] = uvec2(dg.dims.x,dg.dims.y);
+	steps[id][1] = uvec2(r(entities[id].pos),0);//uvec2(dg.dims.x,dg.dims.y);
+	steps[id][2] = uvec2(dg.goal.x,dg.goal.y);
 }

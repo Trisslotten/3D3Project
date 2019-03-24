@@ -169,8 +169,8 @@ private:
 	VkBuffer entity_buffer_src;
 	VkBuffer steps_buffer_dst;
 	VkBuffer steps_buffer_src;
-	VkBuffer dimsgoal_src;
-	VkBuffer dimsgoal_dst;
+	VkBuffer dimsgoal_buffer_src;
+	VkBuffer dimsgoal_buffer_dst;
 
 	vec2* astarSteps;
 
