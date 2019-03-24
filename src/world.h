@@ -49,4 +49,6 @@ public:
 	int entitiesSize = 0;
 	std::vector<Entity> entities;
 	unsigned char* origMap;
+
+	vec2 goal;
 };

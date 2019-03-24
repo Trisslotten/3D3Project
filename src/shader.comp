@@ -6,6 +6,11 @@ struct Entity {
 	uvec2 pos;
 };
 
+struct Dimsgoal {
+	uvec2 dims;
+	uvec2 goal;
+};
+
 layout(binding = 0) buffer lay0{
 	uint map[];
 };
@@ -15,8 +20,12 @@ layout(binding = 1) buffer lay1{
 layout(binding = 2) buffer lay2{
 	uvec2 steps[][20];
 };
+layout(binding = 3) buffer lay3{
+	Dimsgoal dg;
+};
 
 void main() {
 	const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
 	steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
+	steps[id][1] = uvec2(dg.dims.x,dg.dims.y);
 }
