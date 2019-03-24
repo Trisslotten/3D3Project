@@ -290,7 +290,7 @@ void Renderer::createInstance()
 		createInfo2.flags = (0
 							 | VK_DEBUG_REPORT_ERROR_BIT_EXT
 							 | VK_DEBUG_REPORT_WARNING_BIT_EXT
-							 | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
+							 // | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
 							 // | VK_DEBUG_REPORT_DEBUG_BIT_EXT
 							 // | VK_DEBUG_REPORT_INFORMATION_BIT_EXT
 							);
@@ -357,22 +357,26 @@ void Renderer::createLogicalDevice()
 	std::set<int> uniqueQueueFamilies = { 
 		familyIndices.graphicsFamily, 
 		familyIndices.presentFamily,
-		familyIndices.computeFamily
+		familyIndices.computeFamily,
+		familyIndices.transferFamily
 	};
 
-	float queuePriority = 1.0f;
-	for (int queueFamily : uniqueQueueFamilies)
+	float queuePriority[] = 
 	{
-		VkDeviceQueueCreateInfo queueCreateInfo = {};
-		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueCreateInfo.queueFamilyIndex = queueFamily;
-		queueCreateInfo.queueCount = 1;
-		queueCreateInfo.pQueuePriorities = &queuePriority;
-		queueCreateInfos.push_back(queueCreateInfo);
-	}
+		1.f,
+		1.f,
+		1.f,
+		1.f
+	};
+
+	VkDeviceQueueCreateInfo queueCreateInfo = {};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.queueFamilyIndex = familyIndices.graphicsFamily;
+	queueCreateInfo.queueCount = 4;
+	queueCreateInfo.pQueuePriorities = queuePriority;
+	queueCreateInfos.push_back(queueCreateInfo);
 
 	VkPhysicalDeviceFeatures deviceFeatures = {};
-	//deviceFeatures.fillModeNonSolid = VK_TRUE;
 
 	VkDeviceCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -392,9 +396,16 @@ void Renderer::createLogicalDevice()
 		throw std::runtime_error("failed to create logical device!");
 
 	vkGetDeviceQueue(device, familyIndices.graphicsFamily, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, familyIndices.presentFamily, 0, &presentQueue);
-	vkGetDeviceQueue(device, familyIndices.computeFamily, 0, &computeQueue);
-	vkGetDeviceQueue(device, familyIndices.transferFamily, 0, &transferQueue);
+	vkGetDeviceQueue(device, familyIndices.presentFamily,  1, &presentQueue);
+	vkGetDeviceQueue(device, familyIndices.computeFamily,  2, &computeQueue);
+	vkGetDeviceQueue(device, familyIndices.transferFamily, 3, &transferQueue);
+
+	
+	std::cout << "Q: " << graphicsQueue << "\n";
+	std::cout << "Q: " << presentQueue << "\n";
+	std::cout << "Q: " << computeQueue << "\n";
+	std::cout << "Q: " << transferQueue << "\n";
+	
 }
 
 void Renderer::createSwapChain()
@@ -1440,7 +1451,6 @@ QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
 			if (presentSupport)
 				indices.presentFamily = i;
 		}
-
 		if (indices.isComplete())
 			break;
 		i++;
