@@ -1,22 +1,22 @@
 #version 450 core
 
-layout(local_size_x_id = 128, local_size_y_id = 1) in; // workgroup size defined with specialization constants. On cpp side there is associated SpecializationInfo entry in PipelineShaderStageCreateInfo
+layout(local_size_x_id = 1, local_size_y_id = 1) in; // workgroup size defined with specialization constants. On cpp side there is associated SpecializationInfo entry in PipelineShaderStageCreateInfo
 
 struct Entity {
-	vec2 pos;
+	uvec2 pos;
 };
 
 layout(binding = 0) buffer lay0{
-	int map[];
+	uint map[];
 };
 layout(binding = 1) buffer lay1{
 	Entity entities[];
 };
 layout(binding = 2) buffer lay2{
-	vec2 steps[][20];
+	uvec2 steps[][20];
 };
 
 void main() {
 	const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
-	steps[id][0] = vec2(2,2);
+	steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
 }
