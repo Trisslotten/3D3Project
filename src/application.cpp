@@ -19,10 +19,11 @@ void Application::run()
 void Application::init()
 {
 	//world.init(100, 100, 10);
-	world.init("test2.png", 8);
+	std::string map = "test2.png";
+	world.init(map, 8);
 	world.printEntities();
 
-	renderer.init(world.getMap(), world.getMapDims());
+	renderer.init(map);
 	renderer.initCompute(world.mapSize, world.entitiesSize);
 	renderer.mapComputeMemory(world.origMap, world.entities.data(), world.mapSize, world.entitiesSize);
 	renderer.executeCompute();

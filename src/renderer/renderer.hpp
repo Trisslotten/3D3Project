@@ -5,6 +5,7 @@
 #include "../world.h"
 #include "../util/Threadpool.h"
 #include "../util/timer.hpp"
+#include "texture2D.hpp"
 
 extern int GLOBAL_NUM_THREADS;
 
@@ -32,10 +33,12 @@ struct SwapChainSupportDetails
 class Renderer
 {
 public:
-	Renderer() : threadPool(GLOBAL_NUM_THREADS)
+	Renderer() : 
+		threadPool(GLOBAL_NUM_THREADS), 
+		texture(this)
 	{}
 
-	void init(unsigned char* map, vec2 mapdims);
+	void init(const std::string& map);
 	void render();
 	void cleanup();
 
@@ -56,15 +59,18 @@ private:
 	void createImageViews();
 	void createRenderPass();
 	void createFramebuffers();
+	void createDescriptorSetLayout();
+	void createDescriptorPool();
+	void createDescriptorSets();
 	void createGraphicsPipeline();
 	void createCommandPools();
 	void createCommandBuffers();
 	void createSyncObjects();
+	void createSampler();
 
 	void createComputePipeline();
 	void createComputeCommandPools();
 	void createComputeDescriptorSets();
-
 
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
@@ -75,12 +81,15 @@ private:
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkShaderModule createShaderModule(const std::string& filepath);
 
-	void threadRecordCommand(int threadID);
+	VkCommandBuffer beginSingleTimeCommands();
+	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
 
 	int commandIndex(int threadID)
 	{
 		return threadID + currentFrame * GLOBAL_NUM_THREADS;
 	}
+
+	friend class Texture2D;
 
 	const int MAX_FRAMES_IN_FLIGHT = 2;
 	size_t currentFrame = 0;
@@ -106,6 +115,7 @@ private:
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
+	VkCommandPool singleTimeCommandsPool;
 	std::vector<VkCommandPool> commandPools;
 	std::vector<VkCommandPool> mainCommandPools;
 	std::vector<VkCommandBuffer> entityCommandBuffers;
@@ -114,6 +124,12 @@ private:
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
+
+	VkSampler textureSampler;
+	Texture2D texture;
+	VkDescriptorSetLayout descriptorSetLayout;
+	VkDescriptorPool descriptorPool;
+	std::vector<VkDescriptorSet> descriptorSets;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;

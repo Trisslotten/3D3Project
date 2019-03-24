@@ -9,7 +9,11 @@ const vec2 quad[] = {
 	vec2(1,1),
 };
 
+layout(location = 1) out vec2 uv;
+
 void main()
 {
-	gl_Position = vec4(quad[gl_VertexIndex]-0.5, 0.5, 1);
+	vec2 p = quad[gl_VertexIndex];
+	uv = p;
+	gl_Position = vec4(p-0.5, 0.5, 1);
 }
