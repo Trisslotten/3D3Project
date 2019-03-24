@@ -938,8 +938,10 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	alignOffsetEntity = reqs.alignment - (sizeMap % reqs.alignment);
 	vkGetBufferMemoryRequirements(device, steps_buffer_dst, &reqs);
 	alignOffsetSteps = reqs.alignment - ((sizeMap+alignOffsetEntity+sizeEntites) % reqs.alignment);
-	vkGetBufferMemoryRequirements(device, dimsgoal_src, &reqs);
+	
 	vkGetBufferMemoryRequirements(device, dimsgoal_dst, &reqs);
+	vkGetBufferMemoryRequirements(device, dimsgoal_src, &reqs);
+											//mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize
 	alignOffsetDimsGoal = reqs.alignment - ((sizeMap + alignOffsetEntity + sizeEntites + alignOffsetSteps + stepsSize) % reqs.alignment);
 
 	VkPhysicalDeviceMemoryProperties properties;
@@ -948,7 +950,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 
 
 
-	memorySize = sizeMap + sizeEntites + stepLen * sizeof(vec2) + 2 * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps + alignOffsetDimsGoal;
+	memorySize = sizeMap + sizeEntites + stepLen * sizeof(vec2) + 2 * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps + alignOffsetDimsGoal + reqs.size;
 
 	// set memoryTypeIndex to an invalid entry in the properties.memoryTypes array
 	uint32_t memoryTypeIndex = VK_MAX_MEMORY_TYPES;
