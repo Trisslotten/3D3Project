@@ -5,8 +5,9 @@
 #include <unordered_map>
 #include <vector>
 #include <functional>
+#include <atomic>
 
-class ThreadPool
+class MyThreadPool
 {
 public:
 	void init(size_t numThreads = 4);
@@ -27,6 +28,7 @@ private:
 	bool running = true;
 	std::vector<std::thread> threads;
 	std::vector<std::mutex*> mutexes;
+	std::vector<std::mutex*> mainMutexes;
 	std::vector<std::condition_variable*> cvs;
 	std::vector<bool> taskRunning;
 

@@ -3,8 +3,6 @@
 #include <vector>
 #include <thread>
 #include "renderer/renderer.hpp"
-#include "util/threadpool.hpp"
-#include "util/timer.hpp"
 #include "world.h"
 
 
@@ -19,6 +17,4 @@ private:
 
 	Renderer renderer;
 	World world;
-
-	Timer timer;
 };

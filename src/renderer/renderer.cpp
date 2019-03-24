@@ -59,7 +59,6 @@ const std::vector<const char*> deviceExtensions = {
 
 void Renderer::init(unsigned char* map, vec2 mapdims)
 {
-	threadPool.init(GLOBAL_NUM_THREADS);
 	createWindow();
 	createInstance();
 	createSurface();
@@ -71,14 +70,46 @@ void Renderer::init(unsigned char* map, vec2 mapdims)
 	createFramebuffers();
 	createGraphicsPipeline(); 
 	createCommandPools();
+	createCommandBuffers();
 	createSyncObjects();
 }
 
 void Renderer::render()
 {
-	/*
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, std::numeric_limits<uint64_t>::max());
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
+
+	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
+	{
+		threadPool.queueTask([this, i]
+		{
+			int index = commandIndex(i);
+			vkResetCommandPool(device, commandPools[index], 0);
+
+			VkCommandBuffer cmdBuffer = entityCommandBuffers[index];
+
+			VkCommandBufferBeginInfo beginInfo = {};
+			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+
+			VkCommandBufferInheritanceInfo inheritanceInfo = {};
+			inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+			inheritanceInfo.renderPass = renderPass;
+			inheritanceInfo.framebuffer = VK_NULL_HANDLE;
+			inheritanceInfo.occlusionQueryEnable = VK_FALSE;
+			beginInfo.pInheritanceInfo = &inheritanceInfo;
+
+			if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS)
+				throw std::runtime_error("failed to begin recording command buffer!");
+			{
+				vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+				for(int i = 0; i < 1; i++)
+					vkCmdDraw(cmdBuffer, 4, 1, 0, 0);
+			}
+			if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS)
+				throw std::runtime_error("failed to record command buffer!");
+		});
+	}
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -91,34 +122,14 @@ void Renderer::render()
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
-	*/
-	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
-	{
-		threadPool.submit([this, i] {
-			int index = commandIndex(i);
-			VkCommandBuffer cmdBuffer = this->entityCommandBuffers[index];
 
-			VkCommandBufferBeginInfo beginInfo = {};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	vkResetCommandPool(device, mainCommandPools[currentFrame], 0);
 
-			if (vkBeginCommandBuffer(cmdBuffer, &beginInfo) != VK_SUCCESS)
-				throw std::runtime_error("failed to begin recording command buffer!");
-			{
-				vkCmdDraw(cmdBuffer, 4, 1, 0, 0);
-			}
-			if (vkEndCommandBuffer(cmdBuffer) != VK_SUCCESS)
-				throw std::runtime_error("failed to record command buffer!");
-		});
-	}
-	threadPool.waitForAll();
-	/*
-	//VkCommandBuffer currentCommandBuffer = commandBuffers[imageIndex];
+	VkCommandBuffer currentCommandBuffer = primCommandBuffers[currentFrame];
 
-	
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	if (vkBeginCommandBuffer(currentCommandBuffer, &beginInfo) != VK_SUCCESS)
 		throw std::runtime_error("failed to begin recording command buffer!");
@@ -134,9 +145,15 @@ void Renderer::render()
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
-	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-	// TODO: add subcommands from multithread recording here
+
+	std::vector<VkCommandBuffer> secondarybuffers;
+	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
+		secondarybuffers.push_back(entityCommandBuffers[commandIndex(i)]);
+
+	threadPool.waitForTasks();
+	vkCmdExecuteCommands(currentCommandBuffer, secondarybuffers.size(), secondarybuffers.data());
 
 	vkCmdEndRenderPass(currentCommandBuffer);
 
@@ -152,27 +169,29 @@ void Renderer::render()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (auto r = vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
-	{
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit draw command buffer!");
-	}
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
-
 	VkSwapchainKHR swapChains[] = { swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
-
 	presentInfo.pResults = nullptr; // Optional
-
 	vkQueuePresentKHR(presentQueue, &presentInfo);
 
-	*/
+	if (fpsTimer.elapsed() > 1.0)
+	{
+		double time = fpsTimer.restart();
+		std::string fps = "Vulkan | FPS: " + std::to_string(fpsFrameCount/time);
+		glfwSetWindowTitle(window, fps.c_str());
+		fpsFrameCount = 0;
+	}
+	fpsFrameCount++;
+
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
@@ -184,7 +203,7 @@ void Renderer::cleanup()
 		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(device, inFlightFences[i], nullptr);
 	}
-
+	vkDestroyPipeline(device, graphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -262,7 +281,7 @@ void Renderer::createInstance()
 		createInfo2.flags = (0
 							 | VK_DEBUG_REPORT_ERROR_BIT_EXT
 							 | VK_DEBUG_REPORT_WARNING_BIT_EXT
-							 // | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
+							 | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
 							 // | VK_DEBUG_REPORT_DEBUG_BIT_EXT
 							 // | VK_DEBUG_REPORT_INFORMATION_BIT_EXT
 							);
@@ -897,7 +916,7 @@ void Renderer::createGraphicsPipeline()
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport = {};
@@ -982,6 +1001,27 @@ void Renderer::createGraphicsPipeline()
 		throw std::runtime_error("failed to create pipeline layout!");
 	}
 
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2;
+	pipelineInfo.pStages = shaderStages;
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = nullptr; // Optional
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = nullptr; // Optional
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = renderPass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+	pipelineInfo.basePipelineIndex = -1; // Optional
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+		throw std::runtime_error("failed to create graphics pipeline!");
+
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
@@ -990,51 +1030,76 @@ void Renderer::createCommandPools()
 {
 	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
-	VkCommandPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-	poolInfo.flags = 0; // Optional
-
-	int numCommandPools = GLOBAL_NUM_THREADS * MAX_FRAMES_IN_FLIGHT;
-	commandPools.resize(numCommandPools);
-	for (int i = 0; i < numCommandPools; i++)
 	{
-		if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPools[i]) != VK_SUCCESS)
+		int numCommandPools = GLOBAL_NUM_THREADS * MAX_FRAMES_IN_FLIGHT;
+		commandPools.resize(numCommandPools);
+
+		VkCommandPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+		poolInfo.flags = 0; // Optional
+		for (int i = 0; i < numCommandPools; i++)
 		{
-			throw std::runtime_error("failed to create command pool!");
+			if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPools[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("failed to create a entity command pool!");
+			}
 		}
 	}
+
+	{
+		mainCommandPools.resize(MAX_FRAMES_IN_FLIGHT);
+
+		VkCommandPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+		poolInfo.flags = 0; // Optional
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			if (vkCreateCommandPool(device, &poolInfo, nullptr, &mainCommandPools[i]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("failed to create main command pool!");
+			}
+		}
+	}
+
 }
 
 void Renderer::createCommandBuffers()
 {
-	int numSecCmdBuffers = GLOBAL_NUM_THREADS * MAX_FRAMES_IN_FLIGHT;
-	entityCommandBuffers.resize(numSecCmdBuffers);
-	for (int i = 0; i < numSecCmdBuffers; i++)
 	{
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = commandPools[i];
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-		allocInfo.commandBufferCount = 1;
+		int numSecCmdBuffers = GLOBAL_NUM_THREADS * MAX_FRAMES_IN_FLIGHT;
+		entityCommandBuffers.resize(numSecCmdBuffers);
+		for (int i = 0; i < numSecCmdBuffers; i++)
+		{
+			VkCommandBufferAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			allocInfo.commandPool = commandPools[i];
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+			allocInfo.commandBufferCount = 1;
 
-		if (vkAllocateCommandBuffers(device, &allocInfo, &entityCommandBuffers[i]) != VK_SUCCESS)
-			throw std::runtime_error("failed to allocate command buffers!");
+			if (vkAllocateCommandBuffers(device, &allocInfo, &entityCommandBuffers[i]) != VK_SUCCESS)
+				throw std::runtime_error("failed to allocate command buffers!");
+		}
 	}
 
 
 	{
+
 		primCommandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
 
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		// use first since not done concurrently
-		allocInfo.commandPool = commandPools[0];
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		allocInfo.commandBufferCount = primCommandBuffers.size();
+		for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		{
+			VkCommandBufferAllocateInfo allocInfo = {};
+			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+			// use first since not done concurrently
+			allocInfo.commandPool = mainCommandPools[i];
+			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+			allocInfo.commandBufferCount = 1;
 
-		if (vkAllocateCommandBuffers(device, &allocInfo, primCommandBuffers.data()) != VK_SUCCESS)
-			throw std::runtime_error("failed to allocate command buffers!");
+			if (vkAllocateCommandBuffers(device, &allocInfo, &primCommandBuffers[i]) != VK_SUCCESS)
+				throw std::runtime_error("failed to allocate command buffers!");
+		}
 	}
 }
 

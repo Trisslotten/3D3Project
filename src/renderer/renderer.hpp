@@ -3,7 +3,8 @@
 #include <vector>
 #include "../entity.h"
 #include "../world.h"
-#include "../util/threadpool.hpp"
+#include "../util/Threadpool.h"
+#include "../util/timer.hpp"
 
 extern int GLOBAL_NUM_THREADS;
 
@@ -31,8 +32,10 @@ struct SwapChainSupportDetails
 class Renderer
 {
 public:
+	Renderer() : threadPool(GLOBAL_NUM_THREADS)
+	{}
+
 	void init(unsigned char* map, vec2 mapdims);
-	//void submit();
 	void render();
 	void cleanup();
 
@@ -57,6 +60,7 @@ private:
 	void createCommandPools();
 	void createCommandBuffers();
 	void createSyncObjects();
+
 	void createComputePipeline();
 	void createComputeCommandPools();
 	void createComputeDescriptorSets();
@@ -83,8 +87,11 @@ private:
 	int width = 800;
 	int height = 600;
 	GLFWwindow* window;
-	ThreadPool threadPool;
+	threadpool::Threadpool threadPool;
 	std::vector<Entity> toDraw;
+
+	Timer fpsTimer;
+	double fpsFrameCount;
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
@@ -98,7 +105,9 @@ private:
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
+	VkPipeline graphicsPipeline;
 	std::vector<VkCommandPool> commandPools;
+	std::vector<VkCommandPool> mainCommandPools;
 	std::vector<VkCommandBuffer> entityCommandBuffers;
 	std::vector<VkCommandBuffer> primCommandBuffers;
 

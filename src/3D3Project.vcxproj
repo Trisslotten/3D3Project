@@ -145,7 +145,7 @@
     <ClCompile Include="lodepng\lodepng_util.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="renderer\renderer.cpp" />
-    <ClCompile Include="util\threadpool.cpp" />
+    <ClCompile Include="util\mythreadpool.cpp" />
     <ClCompile Include="world.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -154,7 +154,8 @@
     <ClInclude Include="lodepng\lodepng.h" />
     <ClInclude Include="lodepng\lodepng_util.h" />
     <ClInclude Include="renderer\renderer.hpp" />
-    <ClInclude Include="util\threadpool.hpp" />
+    <ClInclude Include="util\Threadpool.h" />
+    <ClInclude Include="util\mythreadpool.hpp" />
     <ClInclude Include="util\timer.hpp" />
     <ClInclude Include="world.h" />
   </ItemGroup>

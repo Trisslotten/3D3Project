@@ -30,9 +30,6 @@
     <ClCompile Include="renderer\renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="util\threadpool.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="lodepng\lodepng_util.cpp">
       <Filter>Source Files\lodepng</Filter>
     </ClCompile>
@@ -42,15 +39,15 @@
     <ClCompile Include="world.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="util\mythreadpool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="renderer\renderer.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="util\threadpool.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="util\timer.hpp">
@@ -67,6 +64,12 @@
     </ClInclude>
     <ClInclude Include="lodepng\lodepng_util.h">
       <Filter>Header Files\lodepng</Filter>
+    </ClInclude>
+    <ClInclude Include="util\Threadpool.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="util\mythreadpool.hpp">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

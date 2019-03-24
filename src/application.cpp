@@ -26,7 +26,7 @@ void Application::init()
 	renderer.init(world.getMap(), world.getMapDims());
 	renderer.initCompute(world.mapSize, world.entitiesSize);
 	renderer.mapComputeMemory(world.origMap, world.entities.data(), world.mapSize, world.entitiesSize);
-	renderer.executeCompute();
+	//renderer.executeCompute();
 }
 
 void Application::update()
