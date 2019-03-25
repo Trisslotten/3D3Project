@@ -77,6 +77,8 @@ private:
 	void createSampler();
 	void createUniformBuffers();
 
+	void createQueryPool();
+
 	void calcUniformBufferAlignment();
 
 	void getVkLimits();
@@ -90,6 +92,7 @@ private:
 	void transferComputeDataToHost();
 
 	void updateUniformBuffer();
+	void saveBenchmarkValues();
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -111,7 +114,7 @@ private:
 
 	friend class Texture2D;
 
-	const int MAX_FRAMES_IN_FLIGHT = 2;
+	const int MAX_FRAMES_IN_FLIGHT = 3;
 	size_t currentFrame = 0;
 	int width = 800;
 	int height = 600;
@@ -120,6 +123,12 @@ private:
 	std::vector<Entity> toDraw;
 	uint32_t drawCount = 0;
 	float* posBuffer;
+
+
+	// benchmark values
+	uint64_t numValues;
+	const uint64_t MAX_BENCHMARK_VALUES = 100;
+	uint32_t* benchmarkValues;
 
 	Timer fpsTimer;
 	double fpsFrameCount;
@@ -165,6 +174,11 @@ private:
 	VkQueue presentQueue;
 	VkQueue computeQueue;
 	VkQueue transferQueue;
+
+	uint32_t timestampValidBitsGraphicsQueue;
+	uint32_t timestampValidBitsPresentQueue;
+	std::vector<VkQueryPool> queryPools;
+	uint32_t timestampToNsScaling;
 
 	VkDebugReportCallbackEXT callback;
 

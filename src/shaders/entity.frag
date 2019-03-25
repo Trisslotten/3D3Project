@@ -17,7 +17,6 @@ void main()
 		color = vec3(0,0.5,1);
 	} else {
 		float threshold = (count-1) / 10.0;
-		threshold = 0.3;
 		float w = step(threshold, 1-uv.y);
 		color = w * color + (1-w) * vec3(1,1,0);
 	}
