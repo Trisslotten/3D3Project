@@ -89,6 +89,7 @@ void Renderer::init(const std::string& map)
 	createCommandBuffers();
 	createSyncObjects();
 
+	benchmarkValues = new uint32_t(MAX_BENCHMARK_VALUES);
 
 	posBuffer = new float((uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES);
 
@@ -262,8 +263,6 @@ void Renderer::render()
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit draw command buffer!");
 
-
-
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
@@ -285,6 +284,8 @@ void Renderer::render()
 	fpsFrameCount++;
 
 	uint32_t timeStamps[2]{};
+
+	
 	vkGetQueryPoolResults(
 		device,
 		queryPools[currentFrame],
@@ -293,12 +294,18 @@ void Renderer::render()
 		timeStamps,
 		sizeof(uint32_t),
 		VK_QUERY_RESULT_WAIT_BIT);
+	
 	uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
 
-	elapsed /= 1000; // 1 thousand nanoseconds in one microsecond.
-	static unsigned long slow = 0;
-	if (slow % 1000 == 0)
-		fprintf(stderr, "%d\n", elapsed);
+	if (numValues < MAX_BENCHMARK_VALUES)
+	{
+		benchmarkValues[numValues] = elapsed;
+		numValues++;
+		if (numValues >= MAX_BENCHMARK_VALUES)
+		{
+			saveBenchmarkValues();
+		}
+	}
 
 	toDraw.clear();
 	drawCount = 0;
@@ -395,7 +402,7 @@ void Renderer::createInstance()
 							 | VK_DEBUG_REPORT_ERROR_BIT_EXT
 							 | VK_DEBUG_REPORT_WARNING_BIT_EXT
 							 //| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
-							 //| VK_DEBUG_REPORT_DEBUG_BIT_EXT
+							 | VK_DEBUG_REPORT_DEBUG_BIT_EXT
 							 //| VK_DEBUG_REPORT_INFORMATION_BIT_EXT
 							);
 		createInfo2.pfnCallback = debugCallback;
@@ -823,7 +830,7 @@ void Renderer::transferComputeDataToHost() {
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	vkQueueWaitIdle(transferQueue);
-	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+	vkResetCommandPool(device, transferCommandPool, 0);
 	//delete astarSteps;
 	int stepLen = numEntities * preComputedSteps;
 	//astarSteps = new ivec2[stepLen];
@@ -892,6 +899,18 @@ void Renderer::updateUniformBuffer()
 	vkUnmapMemory(device, uniformBuffersMemory[currentFrame]);
 }
 
+void Renderer::saveBenchmarkValues()
+{
+	std::string content = "";
+	for (int i = 0; i < MAX_BENCHMARK_VALUES; i++)
+	{
+		content += std::to_string(benchmarkValues[i]) + "\n";
+	}
+	std::ofstream file("benchmark.txt");
+	file << content;
+	file.close();
+}
+
 void Renderer::transferComputeDataToDevice() {
 	
 	VkCommandBufferBeginInfo beginInfo = {};
@@ -925,7 +944,9 @@ void Renderer::transferComputeDataToDevice() {
 
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(transferQueue);
-	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+
+	vkResetCommandPool(device, transferCommandPool, 0);
+	//vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
 }
 
 void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* goal, size_t mapSize, size_t entitiesSize)
@@ -1800,7 +1821,7 @@ VkPresentModeKHR Renderer::chooseSwapPresentMode(const std::vector<VkPresentMode
 	{
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 		{
-			//return availablePresentMode;
+			return availablePresentMode;
 		}
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;
