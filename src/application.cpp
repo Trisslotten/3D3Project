@@ -32,12 +32,10 @@ void Application::init()
 
 void Application::update()
 {
-	for (auto e : world.getEntities())
-	{
-		renderer.submitEntity(e);
-	}
+	
 	if (timer.elapsed() >= 0.03) {
 		world.updateEntities();
+	
 
 		if (world.getStepsCount() <= 0 || world.finished) {
 			renderer.mapComputeMemory(world.origMap, world.entities.data(), &world.getMapDims(), &world.goal, world.mapSize, world.entitiesSize);
@@ -47,6 +45,12 @@ void Application::update()
 
 		timer.restart();
 	}
+
+	for (auto e : world.getEntities())
+	{
+		renderer.submitEntity(e);
+	}
+	renderer.submitEntity(Entity(world.goal.x, world.goal.y, true));
 	renderer.render();
 }
 

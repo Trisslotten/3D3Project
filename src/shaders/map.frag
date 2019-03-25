@@ -38,7 +38,7 @@ vec3 wall(vec2 uv)
 
 vec3 ground(vec2 uv)
 {
-	vec3 color = vec3(0.15625);
+	vec3 color = 0.7*vec3(0.15625);
 
 	return color + 0.03*hash12(uv);
 }

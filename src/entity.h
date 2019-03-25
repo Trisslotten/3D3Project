@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 struct uvec2 {
 	unsigned int x;
 	unsigned int y;
@@ -9,6 +11,8 @@ struct uvec2 {
 		x = 0; y = 0;
 	}
 };
+
+typedef uvec2 vec2;
 
 struct ivec2 {
 	int x;
@@ -23,13 +27,17 @@ struct ivec2 {
 struct Entity {
 	uvec2 pos;
 
+	bool isGoal = false;
+
 	Entity() {
 		pos.x = 0;
 		pos.y = 0;
+		isGoal = false;
 	}
-	Entity(unsigned int tx, unsigned int ty) {
+	Entity(uint32_t tx, uint32_t ty, bool _isGoal = false) {
 		pos.x = tx;
 		pos.y = ty;
+		isGoal = _isGoal;
 	}
 
 	void move(ivec2 mv) {
