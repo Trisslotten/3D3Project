@@ -706,11 +706,13 @@ void Renderer::transferComputeDataToHost() {
 	vkUnmapMemory(device, computeMemory_src);
 
 	for (int i = 0; i < numEntities; i++) {
-		printf("entity %d is at: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
-		printf("cost to goal: %d %d \n", astarSteps[i*preComputedSteps+1].x, astarSteps[i*preComputedSteps+1].y);
+		//printf("entity %d is at: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
+		
 	}
-	
-	printf("goal position: %d %d \n", astarSteps[2].x, astarSteps[2].y);
+	for (int j = 0; j < preComputedSteps; j++) {
+		printf("move #%d: (%d,%d) \n", j, astarSteps[0*preComputedSteps + j].x, astarSteps[0*preComputedSteps + j].y);
+	}
+	//printf("goal position: %d %d \n", astarSteps[2].x, astarSteps[2].y);
 }
 
 void Renderer::transferComputeDataToDevice() {

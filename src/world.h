@@ -18,7 +18,7 @@ public:
 	
 	void addEntity(vec2 pos) {
 		Entity ent(pos.x, pos.y);
-		entities.push_back(ent);
+		entities.push_back(Entity(pos.x, pos.y));
 	}
 
 	void printEntities() {

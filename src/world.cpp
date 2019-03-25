@@ -48,11 +48,13 @@ void World::init(std::string filename, unsigned int entityCount) {
 
 	for (int i = 0; i < entityCount; i++) {
 		vec2 pos(rand() % width, rand() % height);
-		entities.push_back(Entity(pos.x, pos.y));
+		//entities.push_back(Entity(pos.x, pos.y));
+		entities.push_back(Entity(1, 1));
 	}
 
 	goal = vec2(rand() % width, rand() % height);
 	while (origMap[mapIdx(goal.x, goal.y)] == 1) {
-		goal = vec2(rand() % width, rand() % height);
+		//goal = vec2(rand() % width, rand() % height);
+		goal = vec2(5,1);
 	}
 }

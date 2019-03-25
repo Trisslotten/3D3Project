@@ -20,7 +20,7 @@ void Application::init()
 {
 	//world.init(100, 100, 10);
 	std::string map = "test2.png";
-	world.init(map, 8);
+	world.init(map, 1);
 	world.printEntities();
 
 	renderer.init(map);

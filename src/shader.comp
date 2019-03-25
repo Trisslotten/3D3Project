@@ -24,19 +24,172 @@ layout(binding = 3) buffer lay3{
 	Dimsgoal dg;
 };
 
+struct Set{
+	uvec2 set[1000];
+	uint count;
+};
+
+void AddSet(inout Set set, in uvec2 vec) {
+	set.set[set.count] = vec;
+	set.count = set.count + 1;
+}
+
+void RemoveSet(inout Set set) {
+	set.count = set.count - 1;
+}
+
 uint posToMapIdx(uvec2 pos) {
 	return pos.y*dg.dims.x + pos.x;
 }
 
-uint r(uvec2 pos) {
+uint h(uvec2 pos) {
 	return abs(int(dg.goal.x) - int(pos.x)) + abs(int(dg.goal.y) - int(pos.y));
+}
+
+uint hdist(uvec2 from, uvec2 to) {
+	return abs(int(to.x) - int(from.x)) + abs(int(to.y) - int(from.y));
+}
+
+uvec2 lowestCost(Set set) {
+	int idx = 0;
+	uint lowest = 0;
+	for (int i=0; i < set.count; i++) {
+		uint cost = h(set.set[i]);
+		if (cost < lowest) {
+			idx = i;
+			lowest = cost;
+		}
+	}
+	return set.set[idx];
+}
+
+uvec2 up(in uvec2 pos) {
+	ivec2 newpos = ivec2(pos) + ivec2(0,1);
+	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+}
+
+uvec2 down(in uvec2 pos) {
+	ivec2 newpos = ivec2(pos) - ivec2(0,1);
+	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+}
+
+uvec2 left(in uvec2 pos) {
+	ivec2 newpos = ivec2(pos) - ivec2(1,0);
+	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+}
+
+uvec2 right(in uvec2 pos) {
+	ivec2 newpos = ivec2(pos) + ivec2(1,0);
+	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+}
+
+bool isInSet(in Set set, in uvec2 pos) {
+	bool ret = false;
+	for(int i=0; i<set.count; i++) {
+		if(set.set[i].x == pos.x && set.set[i].y == pos.y) {
+			ret = true;
+		}
+	}
+	return ret;
 }
 
 uint id;
 
 void main() {
 	 id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
-	steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
-	steps[id][1] = uvec2(r(entities[id].pos),0);//uvec2(dg.dims.x,dg.dims.y);
-	steps[id][2] = uvec2(dg.goal.x,dg.goal.y);
+
+	uint numSteps = 20;
+
+	uvec2 start = entities[id].pos;
+	uvec2 current = start;
+	uint currentIdx = posToMapIdx(current);
+
+	Set closedSet;
+	Set openSet;
+	closedSet.count = 0;
+	openSet.count = 0;
+	AddSet(openSet, current);
+
+	uvec2 cameFrom[10000];
+	uint gscore[10000];
+	uint fscore[10000];
+
+	for(int i=0; i<10000; i++) {
+		//cameFrom[i] = uvec2(0,0);
+		gscore[i] = 10000000;
+		fscore[i] = 10000000;
+	}
+
+	gscore[currentIdx] = 0;
+	fscore[currentIdx] = h(current);
+
+	uint count = 0;
+	bool finished = false;
+	while(openSet.count > 0 && !finished  && count < numSteps) {
+		int idx = 0;
+		uint lowest = 10000000;
+		for (int i=0; i < openSet.count; i++) {
+			uint score = fscore[posToMapIdx(openSet.set[i])];
+			if (score < lowest) {
+				idx = i;
+				lowest = score;
+			}
+		}
+		current = openSet.set[idx];
+		currentIdx = posToMapIdx(current);
+
+		if(current.x == dg.goal.x && current.y == dg.goal.y) {
+			finished = true;
+			continue;
+		}
+		
+		RemoveSet(openSet);
+		AddSet(closedSet, current);
+
+		uvec2 neighbours[] = {up(current), down(current), right(current), left(current) };
+
+		for(int i = 0; i < 4; i++) {
+			uvec2 ne = neighbours[i];
+
+			//if in closed set OR an edge, we ignore this neighbour.
+			if(isInSet(closedSet,ne) || (ne == current))
+				continue;
+
+			uint neIdx = posToMapIdx(ne);
+
+			//if obstacle, ignore
+			if(map[neIdx] == 1)
+				continue;
+			
+
+			uint t_gscore = gscore[currentIdx] + 1;
+
+			if(!isInSet(openSet,ne)) {
+				AddSet(openSet, ne);
+			}
+			else if (t_gscore >= gscore[neIdx]) {
+				continue;
+			}
+
+			cameFrom[neIdx] = current;
+			gscore[neIdx] = t_gscore;
+			fscore[neIdx] = gscore[neIdx] + h(ne);
+		}
+
+		count = count + 1;
+	}
+
+	//steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
+	//steps[id][1] = uvec2(count,0);//uvec2(h(entities[id].pos),0);//uvec2(dg.dims.x,dg.dims.y);
+	//steps[id][2] = uvec2(dg.goal.x,dg.goal.y);
+	
+	
+	//reconstruct path
+	steps[id][0] = uvec2(current.x, current.y);
+	for(int i=1; i < count; i++) {
+		current = cameFrom[currentIdx];
+		currentIdx = posToMapIdx(current);
+		steps[id][i] = uvec2(current.x, current.y);
+	}
+	//steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
 }
