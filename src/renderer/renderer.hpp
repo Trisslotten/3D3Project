@@ -77,6 +77,8 @@ private:
 	void createSampler();
 	void createUniformBuffers();
 
+	void createQueryPool();
+
 	void calcUniformBufferAlignment();
 
 	void getVkLimits();
@@ -165,6 +167,11 @@ private:
 	VkQueue presentQueue;
 	VkQueue computeQueue;
 	VkQueue transferQueue;
+
+	uint32_t timestampValidBitsGraphicsQueue;
+	uint32_t timestampValidBitsPresentQueue;
+	std::vector<VkQueryPool> queryPools;
+	uint32_t timestampToNsScaling;
 
 	VkDebugReportCallbackEXT callback;
 

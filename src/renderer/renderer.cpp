@@ -73,6 +73,7 @@ void Renderer::init(const std::string& map)
 	calcUniformBufferAlignment();
 
 	createLogicalDevice();
+	createQueryPool();
 	createSwapChain();
 	createImageViews();
 	createRenderPass();
@@ -221,6 +222,8 @@ void Renderer::render()
 	if (vkBeginCommandBuffer(currentCommandBuffer, &beginInfo) != VK_SUCCESS)
 		throw std::runtime_error("failed to begin recording command buffer!");
 
+	vkCmdResetQueryPool(currentCommandBuffer, queryPools[currentFrame], 0, 2); // reset both query slots
+
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = renderPass;
@@ -233,6 +236,8 @@ void Renderer::render()
 	renderPassInfo.pClearValues = &clearColor;
 
 	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
 	
 	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
 		secondarybuffers.push_back(entityCommandBuffers[commandIndex(i)]);
@@ -241,6 +246,7 @@ void Renderer::render()
 	threadPool.waitForTasks();
 	vkCmdExecuteCommands(currentCommandBuffer, secondarybuffers.size(), secondarybuffers.data());
 
+	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 1);
 
 	vkCmdEndRenderPass(currentCommandBuffer);
 	if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS)
@@ -278,6 +284,22 @@ void Renderer::render()
 	}
 	fpsFrameCount++;
 
+	uint32_t timeStamps[2]{};
+	vkGetQueryPoolResults(
+		device,
+		queryPools[currentFrame],
+		0, 2,
+		2 * sizeof(uint32_t),
+		timeStamps,
+		sizeof(uint32_t),
+		VK_QUERY_RESULT_WAIT_BIT);
+	uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
+
+	elapsed /= 1000; // 1 thousand nanoseconds in one microsecond.
+	static unsigned long slow = 0;
+	if (slow % 1000 == 0)
+		fprintf(stderr, "%d\n", elapsed);
+
 	toDraw.clear();
 	drawCount = 0;
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -294,6 +316,8 @@ void Renderer::cleanup()
 	vkDestroyPipeline(device, entityGraphicsPipeline, nullptr);
 	vkDestroyPipeline(device, mapGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	for (int i = 0; i < 3; i++)
+		vkDestroyQueryPool(device, queryPools[i], nullptr);
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
 	vkDestroyInstance(instance, nullptr);
@@ -370,9 +394,9 @@ void Renderer::createInstance()
 		createInfo2.flags = (0
 							 | VK_DEBUG_REPORT_ERROR_BIT_EXT
 							 | VK_DEBUG_REPORT_WARNING_BIT_EXT
-							 // | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
-							 // | VK_DEBUG_REPORT_DEBUG_BIT_EXT
-							 // | VK_DEBUG_REPORT_INFORMATION_BIT_EXT
+							 //| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
+							 //| VK_DEBUG_REPORT_DEBUG_BIT_EXT
+							 //| VK_DEBUG_REPORT_INFORMATION_BIT_EXT
 							);
 		createInfo2.pfnCallback = debugCallback;
 		if (CreateDebugReportCallbackEXT(instance, &createInfo2, nullptr, &callback) != VK_SUCCESS)
@@ -1672,6 +1696,21 @@ void Renderer::createUniformBuffers()
 	}
 }
 
+void Renderer::createQueryPool()
+{
+	queryPools.resize(MAX_FRAMES_IN_FLIGHT);
+	for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+	{
+		VkQueryPoolCreateInfo createInfo;
+		createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.flags = 0;
+		createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+		createInfo.queryCount = 2;
+		vkCreateQueryPool(device, &createInfo, nullptr, &queryPools[i]);
+	}
+}
+
 void Renderer::calcUniformBufferAlignment()
 {
 	uniformBufferAlignment = NUM_UNIFORM_FLOATS * sizeof(float);
@@ -1684,6 +1723,8 @@ void Renderer::calcUniformBufferAlignment()
 void Renderer::getVkLimits()
 {
 	vkGetPhysicalDeviceProperties(physicalDevice, &properties);
+
+	timestampToNsScaling = properties.limits.timestampPeriod;
 }
 
 bool Renderer::isDeviceSuitable(VkPhysicalDevice device)
