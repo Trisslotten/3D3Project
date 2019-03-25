@@ -762,7 +762,7 @@ void Renderer::transferComputeDataToHost() {
 
 	VkFence fences = { fen_transfer };
 
-	vkWaitForFences(device, 1, &fences, true, 10000);
+	vkWaitForFences(device, 1, &fences, true, 10000000);
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
 
 	VkBufferCopy copyRegion = {};
@@ -792,8 +792,10 @@ void Renderer::transferComputeDataToHost() {
 
 	for (int i = 0; i < numEntities; i++) {
 		printf("entity %d is at: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
-		printf("map dimensions: %d %d \n", astarSteps[i*preComputedSteps+1].x, astarSteps[i*preComputedSteps+1].y);
+		printf("cost to goal: %d %d \n", astarSteps[i*preComputedSteps+1].x, astarSteps[i*preComputedSteps+1].y);
 	}
+	
+	printf("goal position: %d %d \n", astarSteps[2].x, astarSteps[2].y);
 }
 
 void Renderer::updateUniformBuffer()
@@ -832,7 +834,7 @@ void Renderer::transferComputeDataToDevice() {
 	copyRegion.srcOffset = 0; // Optional
 	copyRegion.dstOffset = 0; // Optional
 	copyRegion.size = sizeof(vec2)*2;
-	vkCmdCopyBuffer(transferCommandBuffer, dimsgoal_src, dimsgoal_dst, 1, &copyRegion);
+	vkCmdCopyBuffer(transferCommandBuffer, dimsgoal_buffer_src, dimsgoal_buffer_dst, 1, &copyRegion);
 
 	vkEndCommandBuffer(transferCommandBuffer);
 	VkSubmitInfo submitInfo = {};
@@ -859,12 +861,12 @@ void Renderer::mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goa
 	res = vkBindBufferMemory(device, map_buffer_src, computeMemory_src, 0);
 	res = vkBindBufferMemory(device, entity_buffer_src, computeMemory_src,	 mapSize + alignOffsetEntity);
 	res = vkBindBufferMemory(device, steps_buffer_src, computeMemory_src,	 mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
-	res = vkBindBufferMemory(device, dimsgoal_src, computeMemory_src,		 mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
+	res = vkBindBufferMemory(device, dimsgoal_buffer_src, computeMemory_src,		 mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
 
 	res = vkBindBufferMemory(device, map_buffer_dst, computeMemory_dst, 0);
 	res = vkBindBufferMemory(device, entity_buffer_dst, computeMemory_dst,	mapSize + alignOffsetEntity);
 	res = vkBindBufferMemory(device, steps_buffer_dst, computeMemory_dst,	mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
-	res = vkBindBufferMemory(device, dimsgoal_dst, computeMemory_dst,		mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
+	res = vkBindBufferMemory(device, dimsgoal_buffer_dst, computeMemory_dst,		mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
 
 	//transferComputeData();
 
@@ -887,7 +889,7 @@ void Renderer::mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goa
 	};
 
 	VkDescriptorBufferInfo dimsgoal_descriptorBufferInfo = {
-	  dimsgoal_dst,
+	  dimsgoal_buffer_dst,
 	  0,
 	  VK_WHOLE_SIZE
 	};
@@ -1036,8 +1038,8 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	vkCreateBuffer(device, &bufferCreateInfo, 0, &steps_buffer_dst);
 
 	bufferCreateInfo.size = 2 * sizeof(vec2);
-	vkCreateBuffer(device, &bufferCreateInfo, 0, &dimsgoal_dst);
-	vkCreateBuffer(device, &bufferCreateInfo, 0, &dimsgoal_src);
+	vkCreateBuffer(device, &bufferCreateInfo, 0, &dimsgoal_buffer_dst);
+	vkCreateBuffer(device, &bufferCreateInfo, 0, &dimsgoal_buffer_src);
 
 	VkMemoryRequirements reqs;
 	
@@ -1050,8 +1052,10 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	alignOffsetEntity = reqs.alignment - (sizeMap % reqs.alignment);
 	vkGetBufferMemoryRequirements(device, steps_buffer_dst, &reqs);
 	alignOffsetSteps = reqs.alignment - ((sizeMap+alignOffsetEntity+sizeEntites) % reqs.alignment);
-	vkGetBufferMemoryRequirements(device, dimsgoal_src, &reqs);
-	vkGetBufferMemoryRequirements(device, dimsgoal_dst, &reqs);
+	
+	vkGetBufferMemoryRequirements(device, dimsgoal_buffer_dst, &reqs);
+	vkGetBufferMemoryRequirements(device, dimsgoal_buffer_src, &reqs);
+											//mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize
 	alignOffsetDimsGoal = reqs.alignment - ((sizeMap + alignOffsetEntity + sizeEntites + alignOffsetSteps + stepsSize) % reqs.alignment);
 
 	VkPhysicalDeviceMemoryProperties properties;
@@ -1060,7 +1064,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 
 
 
-	memorySize = sizeMap + sizeEntites + stepLen * sizeof(vec2) + 2 * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps + alignOffsetDimsGoal;
+	memorySize = sizeMap + sizeEntites + stepLen * sizeof(vec2) + 2 * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps + alignOffsetDimsGoal + reqs.size;
 
 	// set memoryTypeIndex to an invalid entry in the properties.memoryTypes array
 	uint32_t memoryTypeIndex = VK_MAX_MEMORY_TYPES;

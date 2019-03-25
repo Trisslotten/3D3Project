@@ -28,8 +28,8 @@ void World::init(std::string filename, unsigned int entityCount) {
 	printf("[World] Loaded map with dimensions: %d x %d \n", width, height);
 
 	dims.x = width; dims.y = height;
-	origMap = new unsigned char[width*height];
-	mapSize = width * height * sizeof(unsigned char);
+	origMap = new unsigned int[width*height];
+	mapSize = width * height * sizeof(unsigned int);
 	entitiesSize = entityCount * sizeof(Entity);
 
 	for (int y = 0; y < height; y++) {
@@ -49,5 +49,10 @@ void World::init(std::string filename, unsigned int entityCount) {
 	for (int i = 0; i < entityCount; i++) {
 		vec2 pos(rand() % width, rand() % height);
 		entities.push_back(Entity(pos.x, pos.y));
+	}
+
+	goal = vec2(rand() % width, rand() % height);
+	while (origMap[mapIdx(goal.x, goal.y)] == 1) {
+		goal = vec2(rand() % width, rand() % height);
 	}
 }
