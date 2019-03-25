@@ -10,7 +10,8 @@
 
 extern int GLOBAL_NUM_THREADS;
 
-#define MAX_DRAW_ENTITIES 256
+#define MAX_DRAW_ENTITIES 64
+#define NUM_UNIFORM_FLOATS 3
 
 struct QueueFamilyIndices
 {
@@ -72,6 +73,8 @@ private:
 	void createSampler();
 	void createUniformBuffers();
 
+	void calcUniformBufferAlignment();
+
 	void getVkLimits();
 
 	void createComputePipeline();
@@ -111,6 +114,7 @@ private:
 	GLFWwindow* window;
 	threadpool::Threadpool threadPool;
 	std::vector<Entity> toDraw;
+	uint32_t drawCount = 0;
 	float* posBuffer;
 
 	Timer fpsTimer;

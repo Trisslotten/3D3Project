@@ -4,6 +4,7 @@
 
 layout(binding = 0) uniform Uniforms {
 	vec2 pos;
+	float count;
 };
 
 const vec2 quad[] = {
@@ -13,14 +14,22 @@ const vec2 quad[] = {
 	vec2(1,1),
 };
 
+layout(binding = 1) uniform sampler2D tex;
+
 layout(location = 1) out vec2 uv;
 
 void main()
 {
+	vec2 mapSize = vec2(textureSize(tex, 0));
 	vec2 p = quad[gl_VertexIndex];
 	uv = p;
-	p*=0.1;
-	p -= 1.0;
-	p += pos*0.01;
+
+	vec2 normPos = pos / mapSize;
+	normPos = normPos*2.0-1.0;
+
+	vec2 tileSize = 2.0/mapSize;
+
+	p = p*tileSize + normPos;
+
 	gl_Position = vec4(p, 0.5, 1);
 }

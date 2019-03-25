@@ -7,6 +7,7 @@
 #include <fstream>
 #include <stdint.h>
 #include <array>
+#include <unordered_map>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -67,7 +68,10 @@ void Renderer::init(const std::string& map)
 	createInstance();
 	createSurface();
 	pickPhysicalDevice();
+
 	getVkLimits();
+	calcUniformBufferAlignment();
+
 	createLogicalDevice();
 	createSwapChain();
 	createImageViews();
@@ -84,7 +88,8 @@ void Renderer::init(const std::string& map)
 	createCommandBuffers();
 	createSyncObjects();
 
-	posBuffer = new float(2 * MAX_DRAW_ENTITIES);
+
+	posBuffer = new float((uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES);
 
 	std::cout << "/////////////////////////\n";
 	std::cout << "//   done init vulkan  //\n";
@@ -98,9 +103,17 @@ void Renderer::render()
 
 	updateUniformBuffer();
 
+	std::cout << "/////////////////////////\n";
+	std::cout << "DrawCount = " << drawCount << "\n";
 	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
 	{
-		threadPool.queueTask([this, i]
+		int start = i * glm::ceil(drawCount / float(GLOBAL_NUM_THREADS+1));
+		int end = (i + 1) * glm::ceil(drawCount / float(GLOBAL_NUM_THREADS+1));
+		if (i == GLOBAL_NUM_THREADS - 1)
+			end = drawCount;
+
+		std::cout << "\t(start, end) = (" << start << ", " << end << ")\n";
+		threadPool.queueTask([this, i, start, end]
 		{
 			int index = commandIndex(i);
 			vkResetCommandPool(device, commandPools[index], 0);
@@ -123,7 +136,7 @@ void Renderer::render()
 
 			vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, entityGraphicsPipeline);
 
-			for(int i = 0; i < toDraw.size(); i++)
+			for(int i = start; i < end; i++)
 			{
 				uint32_t dynamicOffset = uniformBufferAlignment * i;
 				vkCmdBindDescriptorSets(
@@ -266,6 +279,7 @@ void Renderer::render()
 	fpsFrameCount++;
 
 	toDraw.clear();
+	drawCount = 0;
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
@@ -648,7 +662,7 @@ void Renderer::createDescriptorSetLayout()
 	samplerLayoutBinding.descriptorCount = 1;
 	samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerLayoutBinding.pImmutableSamplers = nullptr;
-	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
 
 	std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding, samplerLayoutBinding };
 	VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -704,7 +718,7 @@ void Renderer::createDescriptorSets()
 		VkDescriptorBufferInfo bufferInfo = {};
 		bufferInfo.buffer = uniformBuffers[i];
 		bufferInfo.offset = 0;
-		bufferInfo.range = 2 * sizeof(float) * MAX_DRAW_ENTITIES;
+		bufferInfo.range = VK_WHOLE_SIZE;
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		descriptorWrites[0].dstSet = descriptorSets[i];
 		descriptorWrites[0].dstBinding = 0;
@@ -800,17 +814,51 @@ void Renderer::transferComputeDataToHost() {
 
 void Renderer::updateUniformBuffer()
 {
-	int stride = uniformBufferAlignment / sizeof(float);
+	struct DrawObject
+	{
+		int count;
+		vec2 pos;
+	};
+
+	Entity goal;
+	std::unordered_map<uint64_t, DrawObject> posCount;
 	for (int i = 0; i < toDraw.size(); i++)
 	{
-		int index = i * stride;
-		posBuffer[index] = toDraw[i].pos.x;
-		posBuffer[index+1] = toDraw[i].pos.y;
+		if (!toDraw[i].isGoal)
+		{
+			uint64_t x = toDraw[i].pos.x;
+			uint64_t y = toDraw[i].pos.y;
+			uint64_t id = x | (y << 32);
+			posCount[id].count++;
+			posCount[id].pos = toDraw[i].pos;
+		}
+		else
+		{
+			goal = toDraw[i];
+		}
 	}
 
+	int stride = uniformBufferAlignment / sizeof(float);
+	int i = 0; 
+	for (auto obj : posCount)
+	{
+		int index = i * stride;
+		posBuffer[index]     = obj.second.pos.x;
+		posBuffer[index + 1] = obj.second.pos.y;
+		posBuffer[index + 2] = obj.second.count;
+		i++;
+		drawCount++;
+	}
+
+	int index = i * stride;
+	posBuffer[index]     = goal.pos.x;
+	posBuffer[index + 1] = goal.pos.y;
+	posBuffer[index + 2] = 0;
+	drawCount++;
+
 	void* data;
-	vkMapMemory(device, uniformBuffersMemory[currentFrame], 0, sizeof(float) * MAX_DRAW_ENTITIES, 0, &data);
-	memcpy(data, posBuffer, sizeof(float) * MAX_DRAW_ENTITIES);
+	vkMapMemory(device, uniformBuffersMemory[currentFrame], 0, uniformBufferAlignment * MAX_DRAW_ENTITIES, 0, &data);
+	memcpy(data, posBuffer, uniformBufferAlignment * MAX_DRAW_ENTITIES);
 	vkUnmapMemory(device, uniformBuffersMemory[currentFrame]);
 }
 
@@ -1507,7 +1555,6 @@ void Renderer::createCommandBuffers()
 		{
 			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			// use first since not done concurrently
 			allocInfo.commandPool = mainCommandPools[i];
 			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			allocInfo.commandBufferCount = 1;
@@ -1525,7 +1572,6 @@ void Renderer::createCommandBuffers()
 		{
 			VkCommandBufferAllocateInfo allocInfo = {};
 			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			// use first since not done concurrently
 			allocInfo.commandPool = mapCommandPools[i];
 			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 			allocInfo.commandBufferCount = 1;
@@ -1589,11 +1635,6 @@ void Renderer::createSampler()
 
 void Renderer::createUniformBuffers()
 {
-	uint32_t minAlignment = properties.limits.minUniformBufferOffsetAlignment;
-	uniformBufferAlignment = 2 * sizeof(float);
-	// https://github.com/SaschaWillems/Vulkan/tree/master/examples/dynamicuniformbuffer
-	if (minAlignment > 0)
-		uniformBufferAlignment = (uniformBufferAlignment + minAlignment - 1) & ~(minAlignment - 1);
 
 	std::cout << "uniformBufferAlignment: " << uniformBufferAlignment << "\n";
 
@@ -1606,6 +1647,15 @@ void Renderer::createUniformBuffers()
 	{
 		createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
 	}
+}
+
+void Renderer::calcUniformBufferAlignment()
+{
+	uniformBufferAlignment = NUM_UNIFORM_FLOATS * sizeof(float);
+	uint32_t minAlignment = properties.limits.minUniformBufferOffsetAlignment;
+	// https://github.com/SaschaWillems/Vulkan/tree/master/examples/dynamicuniformbuffer
+	if (minAlignment > 0)
+		uniformBufferAlignment = (uniformBufferAlignment + minAlignment - 1) & ~(minAlignment - 1);
 }
 
 void Renderer::getVkLimits()

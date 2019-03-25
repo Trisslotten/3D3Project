@@ -35,6 +35,7 @@ void Application::update()
 	{
 		renderer.submitEntity(e);
 	}
+	renderer.submitEntity(Entity(world.goal.x, world.goal.y, true));
 
 	renderer.render();
 }
