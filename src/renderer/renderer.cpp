@@ -103,16 +103,16 @@ void Renderer::render()
 
 	updateUniformBuffer();
 
-	std::cout << "/////////////////////////\n";
-	std::cout << "DrawCount = " << drawCount << "\n";
-	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
+	//std::cout << "/////////////////////////\n";
+	//std::cout << "DrawCount = " << drawCount << "\n";
+	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
 	{
 		int start = i * glm::ceil(drawCount / float(GLOBAL_NUM_THREADS+1));
 		int end = (i + 1) * glm::ceil(drawCount / float(GLOBAL_NUM_THREADS+1));
 		if (i == GLOBAL_NUM_THREADS - 1)
 			end = drawCount;
 
-		std::cout << "\t(start, end) = (" << start << ", " << end << ")\n";
+		//std::cout << "\t(start, end) = (" << start << ", " << end << ")\n";
 		threadPool.queueTask([this, i, start, end]
 		{
 			int index = commandIndex(i);
@@ -234,7 +234,7 @@ void Renderer::render()
 
 	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 	
-	for (int i = 0; i < GLOBAL_NUM_THREADS; i++)
+	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
 		secondarybuffers.push_back(entityCommandBuffers[commandIndex(i)]);
 
 	// do as much as possible before waiting for threads to finish

@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 struct uvec2 {
 	unsigned int x;
 	unsigned int y;
@@ -9,6 +11,8 @@ struct uvec2 {
 		x = 0; y = 0;
 	}
 };
+
+typedef uvec2 vec2;
 
 struct ivec2 {
 	int x;
