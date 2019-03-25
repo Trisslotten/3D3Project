@@ -24,12 +24,12 @@ public:
 	
 	void addEntity(uvec2 pos) {
 		Entity ent(pos.x, pos.y);
-		entities.push_back(Entity(pos.x, pos.y));
+		entities.push_back(uvec2(pos.x, pos.y));
 	}
 
 	void printEntities() {
-		for (Entity ent : entities) {
-			printf("entity at: %d %d\n", ent.pos.x, ent.pos.y);
+		for (uvec2 ent : entities) {
+			printf("entity at: %d %d\n", ent.x, ent.y);
 		}
 	}
 
@@ -52,19 +52,19 @@ public:
 	void setSteps(ivec2* s) {
 		steps = s;
 		stepsCount = 19;
-		finished = false;
+		goalReached = false;
 
 		for (int e = 0; e < entities.size(); e++) {
 			emptySteps[e] = 0;
 			int step = 19;
-			while (steps[e*entities.size() + step].x == 0 && steps[e*entities.size() + step].y == 0 && step >= 1) {
+			while (steps[e*20 + step].x == 0 && steps[e* 20 + step].y == 0 && step >= 1) {
 				emptySteps[e] = emptySteps[e]+1;
 				step--;
 			}
 		}
 	}
 	
-	std::vector<Entity> getEntities() {
+	std::vector<uvec2> getEntities() {
 		return entities;
 	}
 
@@ -78,7 +78,7 @@ public:
 
 	int mapSize = 0;
 	int entitiesSize = 0;
-	std::vector<Entity> entities;
+	std::vector<uvec2> entities;
 	unsigned int* origMap;
 
 	uvec2 goal;

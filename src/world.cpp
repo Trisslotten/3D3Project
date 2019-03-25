@@ -26,11 +26,13 @@ void World::updateEntities() {
 		for (int e = 0; e < entities.size(); e++) {
 			int stepIdx = stepsCount - emptySteps[e];
 			if (stepIdx >= 0) {
-				ivec2 step = steps[e*entities.size() + stepIdx];
-				entities[e].move(step);
+				ivec2 step = steps[e*20 + stepIdx];
+				entities[e].x += step.x;
+				entities[e].y += step.y;
+				
 				didSomething = true;
 				
-				if (entities[e].pos.x == goal.x && entities[e].pos.y == goal.y) {
+				if (entities[e].x == goal.x && entities[e].y == goal.y) {
 					goalReached = true;
 					printf("Goal reached!\n");
 					setNewGoal();
@@ -65,7 +67,7 @@ void World::init(std::string filename, unsigned int entityCount) {
 	dims.x = width; dims.y = height;
 	origMap = new unsigned int[width*height];
 	mapSize = width * height * sizeof(unsigned int);
-	entitiesSize = entityCount * sizeof(Entity);
+	entitiesSize = entityCount * sizeof(uvec2);
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
@@ -86,8 +88,8 @@ void World::init(std::string filename, unsigned int entityCount) {
 		while (origMap[mapIdx(goal.x, goal.y)] == 1) {
 			pos = uvec2(rand() % width, rand() % height);
 		}
-		entities.push_back(Entity(pos.x, pos.y));
-		//entities.push_back(Entity(1, 1));
+		entities.push_back(uvec2(pos.x, pos.y));
+		//entities.push_back(uvec2(5, 2));
 	}
 	emptySteps = new unsigned int[entities.size()];
 	

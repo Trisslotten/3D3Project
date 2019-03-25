@@ -4,6 +4,7 @@ layout(local_size_x_id = 1, local_size_y_id = 1) in; // workgroup size defined w
 
 struct Entity {
 	uvec2 pos;
+	int isGoal;
 };
 
 struct Dimsgoal {
@@ -15,7 +16,7 @@ layout(binding = 0) buffer lay0{
 	uint map[];
 };
 layout(binding = 1) buffer lay1{
-	Entity entities[];
+	uvec2 entities[];
 };
 layout(binding = 2) buffer lay2{
 	ivec2 steps[][20];
@@ -90,11 +91,11 @@ bool isInSet(in Set set, in uvec2 pos) {
 uint id;
 
 void main() {
-	 id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
+	 id = gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
 
 	uint numSteps = 20;
 
-	uvec2 start = entities[id].pos;
+	uvec2 start = entities[id];
 	uvec2 current = start;
 	uint currentIdx = posToMapIdx(current);
 
@@ -104,11 +105,11 @@ void main() {
 	openSet.count = 0;
 	AddSet(openSet, current);
 
-	uvec2 cameFrom[10000];
-	uint gscore[10000];
-	uint fscore[10000];
+	uvec2 cameFrom[5000];
+	uint gscore[5000];
+	uint fscore[5000];
 
-	for(int i=0; i<10000; i++) {
+	for(int i=0; i<5000; i++) {
 		//cameFrom[i] = uvec2(0,0);
 		gscore[i] = 10000000;
 		fscore[i] = 10000000;
@@ -187,15 +188,16 @@ void main() {
 		steps[id][i] = ivec2(0,0);
 	}
 
-	int i = 0;
+	int s = 0;
 	
-	while(current != start && i < h(start)) {
+	while(current != start && s < min(h(start),numSteps)) {
 		//current = cameFrom[currentIdx];
 		currentIdx = posToMapIdx(current);
 		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
-		steps[id][i] = step;//uvec2(current.x, current.y);
+		steps[id][s] = step;//uvec2(current.x, current.y);
 		current = cameFrom[currentIdx];
-		i = i+1;
+		s++;
 	}
-	//steps[id][0] = ivec2(i,0);
+	//steps[id][0] =ivec2(start);
+	//steps[id][0] = ivec2(id,0);
 }

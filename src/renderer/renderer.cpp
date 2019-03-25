@@ -799,9 +799,9 @@ void Renderer::transferComputeDataToHost() {
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	vkQueueWaitIdle(transferQueue);
-	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+	//vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
 	//delete astarSteps;
-	int stepLen = numEntities * preComputedSteps;
+	//int stepLen = numEntities * preComputedSteps;
 	//astarSteps = new ivec2[stepLen];
 	void* data;
 	vkMapMemory(device, computeMemory_src, 0, memorySize, 0, &data);
@@ -812,9 +812,10 @@ void Renderer::transferComputeDataToHost() {
 		//printf("entity %d is at: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
 		
 	}
-	for (int j = 0; j < preComputedSteps; j++) {
+	/*for (int j = 0; j < preComputedSteps; j++) {
 		printf("move #%d: (%d,%d) \n", j, astarSteps[0*preComputedSteps + j].x, astarSteps[0*preComputedSteps + j].y);
-	}
+		printf("move #%d: (%d,%d) \n", j, astarSteps[1 * preComputedSteps + j].x, astarSteps[1 * preComputedSteps + j].y);
+	}*/
 	//printf("goal position: %d %d \n", astarSteps[2].x, astarSteps[2].y);
 }
 
@@ -901,7 +902,7 @@ void Renderer::transferComputeDataToDevice() {
 
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(transferQueue);
-	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+	//vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
 }
 
 void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* goal, size_t mapSize, size_t entitiesSize)
@@ -1007,10 +1008,10 @@ void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* g
 	vkUpdateDescriptorSets(device, 4, computeWriteDescriptorSet, 0, 0);
 
 	if (res == VK_SUCCESS) {
-		printf("Mapped compute memory successfully!\n");
+		//printf("Mapped compute memory successfully!\n");
 	}
 	else {
-		printf("Failed to map compute memory!\n");
+		//printf("Failed to map compute memory!\n");
 	}
 }
 
@@ -1069,7 +1070,9 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	mapSize = sizeMap;
 	entitiesSize = sizeEntites;
 
-	numEntities = sizeEntites / sizeof(Entity);
+	//size_t sizeofentity = sizeof(Entity2);
+
+	numEntities = sizeEntites / sizeof(uvec2);
 	int stepLen = numEntities * preComputedSteps;
 	astarSteps = new ivec2[stepLen];
 	stepsSize = stepLen * sizeof(ivec2);
