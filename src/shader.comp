@@ -171,7 +171,6 @@ void main() {
 			
 		}
 		count = count + 1;
-		
 	}
 
 	//steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
@@ -183,15 +182,20 @@ void main() {
 	//ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
 	//steps[id][0] = step;//uvec2(current.x, current.y);
 
+
+	for(int i=0; i<numSteps; i++) {
+		steps[id][i] = ivec2(0,0);
+	}
+
 	int i = 0;
 	
-	while(current != start && i < numSteps) {
-		current = cameFrom[currentIdx];
+	while(current != start && i < h(start)) {
+		//current = cameFrom[currentIdx];
 		currentIdx = posToMapIdx(current);
 		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
 		steps[id][i] = step;//uvec2(current.x, current.y);
 		current = cameFrom[currentIdx];
 		i = i+1;
 	}
-	
+	//steps[id][0] = ivec2(i,0);
 }

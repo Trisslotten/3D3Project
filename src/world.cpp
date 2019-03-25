@@ -1,6 +1,7 @@
 #include "world.h" 
 #include <math.h>
 #include "lodepng/lodepng.h"
+#include <time.h>
 
 World::World() {
 
@@ -44,6 +45,8 @@ void World::updateEntities() {
 void World::init(std::string filename, unsigned int entityCount) {
 	std::vector<unsigned char> image; //the raw pixels
 	unsigned width, height;
+
+	srand(time(NULL));
 
 	//decode
 	unsigned error = lodepng::decode(image, width, height, filename, LCT_RGBA);

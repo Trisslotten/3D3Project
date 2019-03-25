@@ -799,9 +799,10 @@ void Renderer::transferComputeDataToHost() {
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	vkQueueWaitIdle(transferQueue);
-	delete astarSteps;
+	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
+	//delete astarSteps;
 	int stepLen = numEntities * preComputedSteps;
-	astarSteps = new ivec2[stepLen];
+	//astarSteps = new ivec2[stepLen];
 	void* data;
 	vkMapMemory(device, computeMemory_src, 0, memorySize, 0, &data);
 	memcpy(astarSteps, (void*)((uintptr_t)data + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps), stepsSize);
@@ -900,6 +901,7 @@ void Renderer::transferComputeDataToDevice() {
 
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(transferQueue);
+	vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
 }
 
 void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* goal, size_t mapSize, size_t entitiesSize)
