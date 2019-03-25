@@ -119,7 +119,7 @@ void main() {
 
 	uint count = 0;
 	bool finished = false;
-	while(openSet.count > 0 && !finished  /*&& count < numSteps*/) {
+	while(openSet.count > 0 && !finished  && hdist(start,current) < numSteps/*&& count < numSteps*/) {
 		int idx = 0;
 		uint lowest = 10000000;
 		for (int i=0; i < openSet.count; i++) {
@@ -180,17 +180,18 @@ void main() {
 	
 	
 	//reconstruct path
-	ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
-	steps[id][0] = step;//uvec2(current.x, current.y);
+	//ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
+	//steps[id][0] = step;//uvec2(current.x, current.y);
 
 	int i = 0;
-	while(current != start) {
+	
+	while(current != start && i < numSteps) {
 		current = cameFrom[currentIdx];
 		currentIdx = posToMapIdx(current);
-		step = ivec2(current) - ivec2(cameFrom[currentIdx]);
-		if(step != start)
-			steps[id][i%numSteps] = step;//uvec2(current.x, current.y);
-		i++;
+		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
+		steps[id][i] = step;//uvec2(current.x, current.y);
+		current = cameFrom[currentIdx];
+		i = i+1;
 	}
 	
 }
