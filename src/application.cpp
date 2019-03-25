@@ -31,6 +31,11 @@ void Application::init()
 
 void Application::update()
 {
+	for (auto e : world.getEntities())
+	{
+		renderer.submitEntity(e);
+	}
+
 	renderer.render();
 }
 

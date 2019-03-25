@@ -144,6 +144,7 @@
     <ClCompile Include="lodepng\lodepng.cpp" />
     <ClCompile Include="lodepng\lodepng_util.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="renderer\constantbuffer.cpp" />
     <ClCompile Include="renderer\renderer.cpp" />
     <ClCompile Include="renderer\texture2D.cpp" />
     <ClCompile Include="util\mythreadpool.cpp" />
@@ -154,6 +155,7 @@
     <ClInclude Include="entity.h" />
     <ClInclude Include="lodepng\lodepng.h" />
     <ClInclude Include="lodepng\lodepng_util.h" />
+    <ClInclude Include="renderer\constantbuffer.hpp" />
     <ClInclude Include="renderer\renderer.hpp" />
     <ClInclude Include="renderer\texture2D.hpp" />
     <ClInclude Include="util\Threadpool.h" />
@@ -162,9 +164,11 @@
     <ClInclude Include="world.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\map.frag" />
+    <None Include="shaders\map.vert" />
     <None Include="shader.comp" />
-    <None Include="shader.frag" />
-    <None Include="shader.vert" />
+    <None Include="shaders\entity.frag" />
+    <None Include="shaders\entity.vert" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

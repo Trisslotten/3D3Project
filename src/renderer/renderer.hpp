@@ -6,8 +6,11 @@
 #include "../util/Threadpool.h"
 #include "../util/timer.hpp"
 #include "texture2D.hpp"
+#include "constantbuffer.hpp"
 
 extern int GLOBAL_NUM_THREADS;
+
+#define MAX_DRAW_ENTITIES 256
 
 struct QueueFamilyIndices
 {
@@ -67,6 +70,9 @@ private:
 	void createCommandBuffers();
 	void createSyncObjects();
 	void createSampler();
+	void createUniformBuffers();
+
+	void getVkLimits();
 
 	void createComputePipeline();
 	void createComputeCommandPools();
@@ -76,6 +82,7 @@ private:
 	void transferComputeDataToDevice();
 	void transferComputeDataToHost();
 
+	void updateUniformBuffer();
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -84,6 +91,8 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	VkShaderModule createShaderModule(const std::string& filepath);
+	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -102,6 +111,7 @@ private:
 	GLFWwindow* window;
 	threadpool::Threadpool threadPool;
 	std::vector<Entity> toDraw;
+	float* posBuffer;
 
 	Timer fpsTimer;
 	double fpsFrameCount;
@@ -118,22 +128,30 @@ private:
 	std::vector<VkFramebuffer> swapChainFramebuffers;
 	VkRenderPass renderPass;
 	VkPipelineLayout pipelineLayout;
-	VkPipeline graphicsPipeline;
+	VkPipeline entityGraphicsPipeline;
+	VkPipeline mapGraphicsPipeline;
 	VkCommandPool singleTimeCommandsPool;
 	std::vector<VkCommandPool> commandPools;
+	std::vector<VkCommandPool> mapCommandPools;
 	std::vector<VkCommandPool> mainCommandPools;
 	std::vector<VkCommandBuffer> entityCommandBuffers;
+	std::vector<VkCommandBuffer> mapCommandBuffers;
 	std::vector<VkCommandBuffer> primCommandBuffers;
 
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 
+	std::vector<VkBuffer> uniformBuffers;
+	std::vector<VkDeviceMemory> uniformBuffersMemory;
+
 	VkSampler textureSampler;
 	Texture2D texture;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
 	std::vector<VkDescriptorSet> descriptorSets;
+
+	VkPhysicalDeviceProperties properties;
 
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
@@ -157,6 +175,8 @@ private:
 	size_t entitiesSize;
 	size_t stepsSize;
 	VkDeviceSize memorySize;
+
+	uint32_t uniformBufferAlignment;
 
 	VkSemaphore sem_transferToDevice;
 	VkSemaphore sem_computeDone;
