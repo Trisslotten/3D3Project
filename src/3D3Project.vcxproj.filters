@@ -45,6 +45,9 @@
     <ClCompile Include="renderer\texture2D.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="renderer\constantbuffer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="application.hpp">
@@ -77,10 +80,15 @@
     <ClInclude Include="renderer\texture2D.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="renderer\constantbuffer.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="shader.vert" />
-    <None Include="shader.frag" />
     <None Include="shader.comp" />
+    <None Include="shaders\entity.vert" />
+    <None Include="shaders\entity.frag" />
+    <None Include="shaders\map.frag" />
+    <None Include="shaders\map.vert" />
   </ItemGroup>
 </Project>
