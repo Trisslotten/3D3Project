@@ -4,6 +4,7 @@
 #include <thread>
 #include "renderer/renderer.hpp"
 #include "world.h"
+#include "util/timer.hpp"
 
 
 class Application
@@ -17,4 +18,5 @@ private:
 
 	Renderer renderer;
 	World world;
+	Timer timer;
 };

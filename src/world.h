@@ -9,16 +9,22 @@ struct Pixel {
 class World {
 private:
 	
-	vec2 dims;
+	uvec2 dims;
+	ivec2* steps;
+	unsigned int stepsCount = 20;
+	unsigned int* emptySteps;
+	bool goalReached = false;
+
+	void setNewGoal();
 public:
 	World();
 	~World();
 	
 	void init(std::string filename, unsigned int entityCount);
 	
-	void addEntity(vec2 pos) {
+	void addEntity(uvec2 pos) {
 		Entity ent(pos.x, pos.y);
-		entities.push_back(ent);
+		entities.push_back(Entity(pos.x, pos.y));
 	}
 
 	void printEntities() {
@@ -27,8 +33,10 @@ public:
 		}
 	}
 
+	void updateEntities();
 
-	vec2 getMapDims() const
+
+	uvec2 getMapDims() const
 	{
 		return dims;
 	}
@@ -36,9 +44,32 @@ public:
 	{
 		return origMap;
 	}
+
+	unsigned int getStepsCount() {
+		return stepsCount;
+	}
+
+	void setSteps(ivec2* s) {
+		steps = s;
+		stepsCount = 19;
+		finished = false;
+
+		for (int e = 0; e < entities.size(); e++) {
+			emptySteps[e] = 0;
+			int step = 19;
+			while (steps[e*entities.size() + step].x == 0 && steps[e*entities.size() + step].y == 0 && step >= 1) {
+				emptySteps[e] = emptySteps[e]+1;
+				step--;
+			}
+		}
+	}
 	
 	std::vector<Entity> getEntities() {
 		return entities;
+	}
+
+	bool getGoalReached() {
+		return goalReached;
 	}
 
 	int mapIdx(int x, int y) {
@@ -50,5 +81,7 @@ public:
 	std::vector<Entity> entities;
 	unsigned int* origMap;
 
-	vec2 goal;
+	uvec2 goal;
+
+	bool finished = false;
 };

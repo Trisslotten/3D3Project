@@ -1,17 +1,27 @@
 #pragma once
 
-struct vec2 {
-	uint32_t x;
-	uint32_t y;
+struct uvec2 {
+	unsigned int x;
+	unsigned int y;
 
-	vec2(uint32_t x, uint32_t y) : x(x), y(y) {}
-	vec2() {
+	uvec2(unsigned int x, unsigned int y) : x(x), y(y) {}
+	uvec2() {
+		x = 0; y = 0;
+	}
+};
+
+struct ivec2 {
+	int x;
+	int y;
+
+	ivec2(int x, int y) : x(x), y(y) {}
+	ivec2() {
 		x = 0; y = 0;
 	}
 };
 
 struct Entity {
-	vec2 pos;
+	uvec2 pos;
 
 	bool isGoal = false;
 
@@ -26,11 +36,11 @@ struct Entity {
 		isGoal = _isGoal;
 	}
 
-	void move(vec2 mv) {
-		pos.x += mv.x;
-		pos.y += mv.y;
+	void move(ivec2 mv) {
+		pos.x = (unsigned int)(int(pos.x) + mv.x);
+		pos.y = (unsigned int)(int(pos.y) + mv.y);
 	}
-	void place(vec2 pos) {
+	void place(uvec2 pos) {
 		pos.x = pos.x;
 		pos.y = pos.y;
 	}

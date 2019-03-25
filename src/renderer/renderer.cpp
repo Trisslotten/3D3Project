@@ -799,17 +799,22 @@ void Renderer::transferComputeDataToHost() {
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	vkQueueWaitIdle(transferQueue);
+	delete astarSteps;
+	int stepLen = numEntities * preComputedSteps;
+	astarSteps = new ivec2[stepLen];
 	void* data;
 	vkMapMemory(device, computeMemory_src, 0, memorySize, 0, &data);
 	memcpy(astarSteps, (void*)((uintptr_t)data + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps), stepsSize);
 	vkUnmapMemory(device, computeMemory_src);
 
 	for (int i = 0; i < numEntities; i++) {
-		printf("entity %d is at: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
-		printf("cost to goal: %d %d \n", astarSteps[i*preComputedSteps+1].x, astarSteps[i*preComputedSteps+1].y);
+		//printf("entity %d is at: %d %d \n", i, astarSteps[i*preComputedSteps].x, astarSteps[i*preComputedSteps].y);
+		
 	}
-	
-	printf("goal position: %d %d \n", astarSteps[2].x, astarSteps[2].y);
+	for (int j = 0; j < preComputedSteps; j++) {
+		printf("move #%d: (%d,%d) \n", j, astarSteps[0*preComputedSteps + j].x, astarSteps[0*preComputedSteps + j].y);
+	}
+	//printf("goal position: %d %d \n", astarSteps[2].x, astarSteps[2].y);
 }
 
 void Renderer::updateUniformBuffer()
@@ -863,6 +868,7 @@ void Renderer::updateUniformBuffer()
 }
 
 void Renderer::transferComputeDataToDevice() {
+	
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -881,7 +887,7 @@ void Renderer::transferComputeDataToDevice() {
 
 	copyRegion.srcOffset = 0; // Optional
 	copyRegion.dstOffset = 0; // Optional
-	copyRegion.size = sizeof(vec2)*2;
+	copyRegion.size = sizeof(uvec2)*2;
 	vkCmdCopyBuffer(transferCommandBuffer, dimsgoal_buffer_src, dimsgoal_buffer_dst, 1, &copyRegion);
 
 	vkEndCommandBuffer(transferCommandBuffer);
@@ -893,20 +899,24 @@ void Renderer::transferComputeDataToDevice() {
 	submitInfo.signalSemaphoreCount = 1;
 
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	//vkQueueWaitIdle(transferQueue);
+	vkQueueWaitIdle(transferQueue);
 }
 
-void Renderer::mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goal, size_t mapSize, size_t entitiesSize)
+void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* goal, size_t mapSize, size_t entitiesSize)
 {
 	void *payload;
-	VkResult res = vkMapMemory(device, computeMemory_src, 0, mapSize + entitiesSize, 0, &payload);
+	delete astarSteps;
+	int stepLen = numEntities * preComputedSteps;
+	astarSteps = new ivec2[stepLen];
+
+	VkResult res = vkMapMemory(device, computeMemory_src, 0, memorySize, 0, &payload);
 	memcpy(payload, map, mapSize);
 	memcpy((void*)((uintptr_t)payload + mapSize + alignOffsetEntity), entities, entitiesSize);
-	memcpy((void*)((uintptr_t)payload + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal), dims, sizeof(vec2));
-	memcpy((void*)((uintptr_t)payload + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal + sizeof(vec2)), goal, sizeof(vec2));
+	memcpy((void*)((uintptr_t)payload + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal), dims, sizeof(uvec2));
+	memcpy((void*)((uintptr_t)payload + mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal + sizeof(uvec2)), goal, sizeof(uvec2));
 	vkUnmapMemory(device, computeMemory_src);
 	
-	res = vkBindBufferMemory(device, map_buffer_src, computeMemory_src, 0);
+	/*res = vkBindBufferMemory(device, map_buffer_src, computeMemory_src, 0);
 	res = vkBindBufferMemory(device, entity_buffer_src, computeMemory_src,	 mapSize + alignOffsetEntity);
 	res = vkBindBufferMemory(device, steps_buffer_src, computeMemory_src,	 mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
 	res = vkBindBufferMemory(device, dimsgoal_buffer_src, computeMemory_src,		 mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
@@ -915,7 +925,7 @@ void Renderer::mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goa
 	res = vkBindBufferMemory(device, entity_buffer_dst, computeMemory_dst,	mapSize + alignOffsetEntity);
 	res = vkBindBufferMemory(device, steps_buffer_dst, computeMemory_dst,	mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
 	res = vkBindBufferMemory(device, dimsgoal_buffer_dst, computeMemory_dst,		mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
-
+	*/
 	//transferComputeData();
 
 	VkDescriptorBufferInfo map_descriptorBufferInfo = {
@@ -1004,7 +1014,7 @@ void Renderer::mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goa
 
 void Renderer::executeCompute() {
 	transferComputeDataToDevice();
-
+	vkResetFences(device, 1, &fen_transfer);
 	VkCommandBufferBeginInfo commandBufferBeginInfo = {
 	  VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	  0,
@@ -1048,7 +1058,7 @@ void Renderer::executeCompute() {
 
 	vkQueueSubmit(computeQueue, 1, &submitInfo, fen_transfer);
 
-	//vkQueueWaitIdle(computeQueue);
+	vkQueueWaitIdle(computeQueue);
 	transferComputeDataToHost();
 }
 
@@ -1059,8 +1069,8 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 
 	numEntities = sizeEntites / sizeof(Entity);
 	int stepLen = numEntities * preComputedSteps;
-	astarSteps = new vec2[stepLen];
-	stepsSize = stepLen * sizeof(vec2);
+	astarSteps = new ivec2[stepLen];
+	stepsSize = stepLen * sizeof(ivec2);
 
 	VkBufferCreateInfo bufferCreateInfo;
 	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -1085,7 +1095,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	vkCreateBuffer(device, &bufferCreateInfo, 0, &steps_buffer_src);
 	vkCreateBuffer(device, &bufferCreateInfo, 0, &steps_buffer_dst);
 
-	bufferCreateInfo.size = 2 * sizeof(vec2);
+	bufferCreateInfo.size = 2 * sizeof(uvec2);
 	vkCreateBuffer(device, &bufferCreateInfo, 0, &dimsgoal_buffer_dst);
 	vkCreateBuffer(device, &bufferCreateInfo, 0, &dimsgoal_buffer_src);
 
@@ -1112,7 +1122,7 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 
 
 
-	memorySize = sizeMap + sizeEntites + stepLen * sizeof(vec2) + 2 * sizeof(vec2) + alignOffsetEntity + alignOffsetSteps + alignOffsetDimsGoal + reqs.size;
+	memorySize = sizeMap + sizeEntites + stepLen * sizeof(ivec2) + 2 * sizeof(uvec2) + alignOffsetEntity + alignOffsetSteps + alignOffsetDimsGoal + reqs.size;
 
 	// set memoryTypeIndex to an invalid entry in the properties.memoryTypes array
 	uint32_t memoryTypeIndex = VK_MAX_MEMORY_TYPES;
@@ -1146,6 +1156,16 @@ void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
 	else {
 		printf("Failed to allocate compute memory!\n");
 	}
+
+	VkResult res = vkBindBufferMemory(device, map_buffer_src, computeMemory_src, 0);
+	res = vkBindBufferMemory(device, entity_buffer_src, computeMemory_src, mapSize + alignOffsetEntity);
+	res = vkBindBufferMemory(device, steps_buffer_src, computeMemory_src, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
+	res = vkBindBufferMemory(device, dimsgoal_buffer_src, computeMemory_src, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
+
+	res = vkBindBufferMemory(device, map_buffer_dst, computeMemory_dst, 0);
+	res = vkBindBufferMemory(device, entity_buffer_dst, computeMemory_dst, mapSize + alignOffsetEntity);
+	res = vkBindBufferMemory(device, steps_buffer_dst, computeMemory_dst, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps);
+	res = vkBindBufferMemory(device, dimsgoal_buffer_dst, computeMemory_dst, mapSize + alignOffsetEntity + entitiesSize + alignOffsetSteps + stepsSize + alignOffsetDimsGoal);
 
 	VkDescriptorSetLayoutBinding descriptorSetLayoutBindings[4] = {
 	  {
