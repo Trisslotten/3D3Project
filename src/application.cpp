@@ -19,7 +19,7 @@ void Application::run()
 void Application::init()
 {
 	//world.init(100, 100, 10);
-	std::string map = "test.png";
+	std::string map = "test2.png";
 	world.init(map, 1);
 	world.printEntities();
 

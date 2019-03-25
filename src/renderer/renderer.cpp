@@ -857,7 +857,7 @@ void Renderer::transferComputeDataToDevice() {
 void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* goal, size_t mapSize, size_t entitiesSize)
 {
 	void *payload;
-	delete astarSteps;
+	//delete astarSteps;
 	int stepLen = numEntities * preComputedSteps;
 	astarSteps = new ivec2[stepLen];
 
@@ -1252,6 +1252,7 @@ void Renderer::createComputeCommandPools() {
 	  0,
 	  familyIndices.computeFamily
 	};
+	commandPoolCreateInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	vkCreateCommandPool(device, &commandPoolCreateInfo, 0, &computeCommandPool);
 
