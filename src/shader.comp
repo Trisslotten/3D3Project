@@ -18,7 +18,7 @@ layout(binding = 1) buffer lay1{
 	Entity entities[];
 };
 layout(binding = 2) buffer lay2{
-	uvec2 steps[][20];
+	ivec2 steps[][20];
 };
 layout(binding = 3) buffer lay3{
 	Dimsgoal dg;
@@ -34,11 +34,19 @@ void AddSet(inout Set set, in uvec2 vec) {
 	set.count = set.count + 1;
 }
 
-void RemoveSet(inout Set set) {
+void RemoveSet(inout Set set, in uvec2 pos) {
+	for(int i=0; i<set.count; i++) {
+		if(set.set[i] == pos) {
+			for(int j=i; j<set.count-1; j++) {
+				set.set[j] = set.set[j+1];
+			}
+			break;
+		}
+	}
 	set.count = set.count - 1;
 }
 
-uint posToMapIdx(uvec2 pos) {
+uint posToMapIdx(in uvec2 pos) {
 	return pos.y*dg.dims.x + pos.x;
 }
 
@@ -50,47 +58,33 @@ uint hdist(uvec2 from, uvec2 to) {
 	return abs(int(to.x) - int(from.x)) + abs(int(to.y) - int(from.y));
 }
 
-uvec2 lowestCost(Set set) {
-	int idx = 0;
-	uint lowest = 0;
-	for (int i=0; i < set.count; i++) {
-		uint cost = h(set.set[i]);
-		if (cost < lowest) {
-			idx = i;
-			lowest = cost;
-		}
-	}
-	return set.set[idx];
-}
-
 uvec2 up(in uvec2 pos) {
 	ivec2 newpos = ivec2(pos) + ivec2(0,1);
-	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+	return uvec2(newpos.x, min(dg.dims.y,max(newpos.y,0)));
 }
 
 uvec2 down(in uvec2 pos) {
 	ivec2 newpos = ivec2(pos) - ivec2(0,1);
-	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+	return uvec2(newpos.x, min(dg.dims.y,max(newpos.y,0)));
 }
 
 uvec2 left(in uvec2 pos) {
 	ivec2 newpos = ivec2(pos) - ivec2(1,0);
-	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+	return uvec2(min(dg.dims.x,max(newpos.x,0)), newpos.y);
 }
 
 uvec2 right(in uvec2 pos) {
 	ivec2 newpos = ivec2(pos) + ivec2(1,0);
-	return uvec2(min(dg.dims.x,max(newpos.x,0)), min(dg.dims.y,max(newpos.y,0)));
+	return uvec2(min(dg.dims.x,max(newpos.x,0)), newpos.y);
 }
 
 bool isInSet(in Set set, in uvec2 pos) {
-	bool ret = false;
 	for(int i=0; i<set.count; i++) {
 		if(set.set[i].x == pos.x && set.set[i].y == pos.y) {
-			ret = true;
+			return true;
 		}
 	}
-	return ret;
+	return false;
 }
 
 uint id;
@@ -125,7 +119,7 @@ void main() {
 
 	uint count = 0;
 	bool finished = false;
-	while(openSet.count > 0 && !finished  && count < numSteps) {
+	while(openSet.count > 0 && !finished  /*&& count < numSteps*/) {
 		int idx = 0;
 		uint lowest = 10000000;
 		for (int i=0; i < openSet.count; i++) {
@@ -138,21 +132,21 @@ void main() {
 		current = openSet.set[idx];
 		currentIdx = posToMapIdx(current);
 
-		if(current.x == dg.goal.x && current.y == dg.goal.y) {
+		if(current == dg.goal) {
 			finished = true;
 			continue;
 		}
 		
-		RemoveSet(openSet);
+		RemoveSet(openSet, current);
 		AddSet(closedSet, current);
 
-		uvec2 neighbours[] = {up(current), down(current), right(current), left(current) };
+		uvec2 neighbours[] = {  up(current), down(current), right(current), left(current) };
 
 		for(int i = 0; i < 4; i++) {
 			uvec2 ne = neighbours[i];
 
-			//if in closed set OR an edge, we ignore this neighbour.
-			if(isInSet(closedSet,ne) || (ne == current))
+			//if in closed set OR outside bounds, we ignore this neighbour.
+			if(isInSet(closedSet,ne) || (ne.x == current.x && ne.y == current.y))
 				continue;
 
 			uint neIdx = posToMapIdx(ne);
@@ -174,9 +168,10 @@ void main() {
 			cameFrom[neIdx] = current;
 			gscore[neIdx] = t_gscore;
 			fscore[neIdx] = gscore[neIdx] + h(ne);
+			
 		}
-
 		count = count + 1;
+		
 	}
 
 	//steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
@@ -185,11 +180,17 @@ void main() {
 	
 	
 	//reconstruct path
-	steps[id][0] = uvec2(current.x, current.y);
-	for(int i=1; i < count; i++) {
+	ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
+	steps[id][0] = step;//uvec2(current.x, current.y);
+
+	int i = 0;
+	while(current != start) {
 		current = cameFrom[currentIdx];
 		currentIdx = posToMapIdx(current);
-		steps[id][i] = uvec2(current.x, current.y);
+		step = ivec2(current) - ivec2(cameFrom[currentIdx]);
+		if(step != start)
+			steps[id][i%numSteps] = step;//uvec2(current.x, current.y);
+		i++;
 	}
-	//steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
+	
 }

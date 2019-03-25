@@ -50,8 +50,12 @@ public:
 	bool windowShouldClose();
 
 	void initCompute(size_t sizeMap, size_t sizeEntites);
-	void mapComputeMemory(void* map, void* entities, vec2* dims, vec2* goal, size_t mapSize, size_t entitySize);
+	void mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* goal, size_t mapSize, size_t entitySize);
 	void executeCompute();
+
+	ivec2* getSteps() {
+		return astarSteps;
+	}
 private:
 	void createWindow();
 	void createInstance();
@@ -192,7 +196,7 @@ private:
 	VkBuffer dimsgoal_buffer_src;
 	VkBuffer dimsgoal_buffer_dst;
 
-	vec2* astarSteps;
+	ivec2* astarSteps;
 
 	VkDescriptorSetLayout computeDescriptorSetLayout;
 	VkDescriptorSet computeDescriptorSet;
