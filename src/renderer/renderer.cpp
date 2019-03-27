@@ -91,7 +91,7 @@ void Renderer::init(const std::string& map)
 
 	benchmarkValues = new uint32_t(MAX_BENCHMARK_VALUES);
 
-	posBuffer = new float((uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES);
+	posBuffer = new float[(uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES];
 
 	std::cout << "/////////////////////////\n";
 	std::cout << "//   done init vulkan  //\n";
@@ -238,7 +238,7 @@ void Renderer::render()
 
 	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
+	//vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
 	
 	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
 		secondarybuffers.push_back(entityCommandBuffers[commandIndex(i)]);
@@ -286,20 +286,20 @@ void Renderer::render()
 	uint32_t timeStamps[2]{};
 
 	
-	vkGetQueryPoolResults(
+	/*vkGetQueryPoolResults(
 		device,
 		queryPools[currentFrame],
 		0, 2,
 		2 * sizeof(uint32_t),
 		timeStamps,
 		sizeof(uint32_t),
-		VK_QUERY_RESULT_WAIT_BIT);
+		VK_QUERY_RESULT_WAIT_BIT);*/
 	
-	uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
+	//uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
 
 	if (numValues < MAX_BENCHMARK_VALUES)
 	{
-		benchmarkValues[numValues] = elapsed;
+		//benchmarkValues[numValues] = elapsed;
 		numValues++;
 		if (numValues >= MAX_BENCHMARK_VALUES)
 		{
@@ -323,6 +323,30 @@ void Renderer::cleanup()
 	vkDestroyPipeline(device, entityGraphicsPipeline, nullptr);
 	vkDestroyPipeline(device, mapGraphicsPipeline, nullptr);
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+
+	//compute
+	vkDestroyPipeline(device, computePipeline, nullptr);
+	vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
+	vkDestroySemaphore(device, sem_computeDone, nullptr);
+	vkDestroySemaphore(device, sem_transferToDevice, nullptr);
+	vkFreeMemory(device, computeMemory_dst, nullptr);
+	vkFreeMemory(device, computeMemory_src, nullptr);
+	vkDestroyBuffer(device, map_buffer_dst, nullptr);
+	vkDestroyBuffer(device, map_buffer_src, nullptr);
+	vkDestroyBuffer(device, entity_buffer_dst, nullptr);
+	vkDestroyBuffer(device, entity_buffer_src, nullptr);
+	vkDestroyBuffer(device, steps_buffer_dst, nullptr);
+	vkDestroyBuffer(device, steps_buffer_src, nullptr);
+	vkDestroyBuffer(device, dimsgoal_buffer_dst, nullptr);
+	vkDestroyBuffer(device, dimsgoal_buffer_src, nullptr);
+
+	vkDestroyDescriptorPool(device, computeDescriptorPool, nullptr);
+	vkDestroyFence(device, fen_transfer, nullptr);
+	vkDestroyCommandPool(device, computeCommandPool, nullptr);
+	vkDestroyDescriptorSetLayout(device, computeDescriptorSetLayout, nullptr);
+
+	delete astarSteps;
+
 	for (int i = 0; i < 3; i++)
 		vkDestroyQueryPool(device, queryPools[i], nullptr);
 	vkDestroyDevice(device, nullptr);
@@ -807,7 +831,7 @@ void Renderer::transferComputeDataToHost() {
 
 	VkFence fences = { fen_transfer };
 
-	vkWaitForFences(device, 1, &fences, true, 10000000);
+	//vkWaitForFences(device, 1, &fences, true, 10000000);
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
 
 	VkBufferCopy copyRegion = {};
@@ -895,21 +919,21 @@ void Renderer::updateUniformBuffer()
 	drawCount++;
 
 	void* data;
-	vkMapMemory(device, uniformBuffersMemory[currentFrame], 0, uniformBufferAlignment * MAX_DRAW_ENTITIES, 0, &data);
-	memcpy(data, posBuffer, uniformBufferAlignment * MAX_DRAW_ENTITIES);
+	vkMapMemory(device, uniformBuffersMemory[currentFrame], 0, (uniformBufferAlignment) * MAX_DRAW_ENTITIES, 0, &data);
+	memcpy(data, posBuffer, (uniformBufferAlignment) * MAX_DRAW_ENTITIES);
 	vkUnmapMemory(device, uniformBuffersMemory[currentFrame]);
 }
 
 void Renderer::saveBenchmarkValues()
 {
-	std::string content = "";
+	/*std::string content = "";
 	for (int i = 0; i < MAX_BENCHMARK_VALUES; i++)
 	{
 		content += std::to_string(benchmarkValues[i]) + "\n";
 	}
 	std::ofstream file("benchmark.txt");
 	file << content;
-	file.close();
+	file.close();*/
 }
 
 void Renderer::transferComputeDataToDevice() {
@@ -919,11 +943,14 @@ void Renderer::transferComputeDataToDevice() {
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
 	
+
 	VkBufferCopy copyRegion = {};
 	copyRegion.srcOffset = 0; // Optional
 	copyRegion.dstOffset = 0; // Optional
-	copyRegion.size = mapSize;
-	vkCmdCopyBuffer(transferCommandBuffer, map_buffer_src, map_buffer_dst, 1, &copyRegion);
+
+		copyRegion.size = mapSize;
+		vkCmdCopyBuffer(transferCommandBuffer, map_buffer_src, map_buffer_dst, 1, &copyRegion);
+	
 
 	copyRegion.srcOffset = 0; // Optional
 	copyRegion.dstOffset = 0; // Optional
@@ -944,7 +971,7 @@ void Renderer::transferComputeDataToDevice() {
 	submitInfo.signalSemaphoreCount = 1;
 
 	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(transferQueue);
+	//vkQueueWaitIdle(transferQueue);
 
 	vkResetCommandPool(device, transferCommandPool, 0);
 	//vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
@@ -1062,7 +1089,7 @@ void Renderer::mapComputeMemory(void* map, void* entities, uvec2* dims, uvec2* g
 
 void Renderer::executeCompute() {
 	transferComputeDataToDevice();
-	vkResetFences(device, 1, &fen_transfer);
+	//vkResetFences(device, 1, &fen_transfer);
 	VkCommandBufferBeginInfo commandBufferBeginInfo = {
 	  VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
 	  0,
@@ -1104,9 +1131,10 @@ void Renderer::executeCompute() {
 	submitInfo.pSignalSemaphores = &sem_computeDone;
 	submitInfo.signalSemaphoreCount = 1;
 
-	vkQueueSubmit(computeQueue, 1, &submitInfo, fen_transfer);
+	vkQueueSubmit(computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkResetCommandPool(device,computeCommandPool, 0);
 
-	vkQueueWaitIdle(computeQueue);
+	//vkQueueWaitIdle(computeQueue);
 	transferComputeDataToHost();
 }
 

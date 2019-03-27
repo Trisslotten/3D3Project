@@ -15,11 +15,13 @@ private:
 	unsigned int* emptySteps;
 	bool goalReached = false;
 
-	void setNewGoal();
+	
 public:
 	World();
 	~World();
 	
+	void setNewGoal();
+
 	void init(std::string filename, unsigned int entityCount);
 	
 	void addEntity(uvec2 pos) {
@@ -84,4 +86,5 @@ public:
 	uvec2 goal;
 
 	bool finished = false;
+	int numComputes = 0;
 };

@@ -19,8 +19,8 @@ void Application::run()
 void Application::init()
 {
 	//world.init(100, 100, 10);
-	std::string map = "test2.png";
-	world.init(map,50);
+	std::string map = "test3.png";
+	world.init(map,63);
 	world.printEntities();
 
 	renderer.init(map);
@@ -33,15 +33,19 @@ void Application::init()
 void Application::update()
 {
 	
-	if (timer.elapsed() >= 0.05) {
-		world.updateEntities();
-	
+	if (timer.elapsed() >= 0.02) {
+		
+		
 
 		if (world.getStepsCount() <= 0 || world.finished || world.getGoalReached()) {
+			if (world.numComputes > 10) {
+				world.setNewGoal();
+			}
 			renderer.mapComputeMemory(world.origMap, world.entities.data(), &world.getMapDims(), &world.goal, world.mapSize, world.entitiesSize);
 			renderer.executeCompute();
 			world.setSteps(renderer.getSteps());
 		}
+		world.updateEntities();
 
 		timer.restart();
 	}

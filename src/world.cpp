@@ -17,10 +17,12 @@ void World::setNewGoal() {
 	while (origMap[mapIdx(goal.x, goal.y)] == 1) {
 		goal = uvec2(rand() % dims.x, rand() % dims.y);
 	}
+	numComputes = 0;
 	//goal = uvec2(5, 1);
 }
 
 void World::updateEntities() {
+
 	bool didSomething = false;
 	if (stepsCount > 0) {
 		for (int e = 0; e < entities.size(); e++) {
@@ -42,6 +44,9 @@ void World::updateEntities() {
 		stepsCount--;
 	}
 	finished = !didSomething;
+	if (finished && !goalReached) {
+		numComputes++;
+	}
 }
 
 void World::init(std::string filename, unsigned int entityCount) {

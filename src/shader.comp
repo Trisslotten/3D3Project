@@ -93,7 +93,7 @@ uint id;
 void main() {
 	 id = gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
 
-	uint numSteps = 20;
+	uint numSteps = 10;
 
 	uvec2 start = entities[id];
 	uvec2 current = start;
