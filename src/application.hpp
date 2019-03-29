@@ -16,7 +16,13 @@ private:
 	void update();
 	void cleanup();
 
+	void updateAstar();
+
 	Renderer renderer;
 	World world;
 	Timer timer;
+
+	std::thread astarComputeThread;
+
+	bool cleaned = false;
 };

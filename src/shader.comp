@@ -1,6 +1,6 @@
 #version 450 core
 
-layout(local_size_x_id = 1, local_size_y_id = 1) in; // workgroup size defined with specialization constants. On cpp side there is associated SpecializationInfo entry in PipelineShaderStageCreateInfo
+layout(local_size_x_id = 64, local_size_y_id = 1) in; // workgroup size defined with specialization constants. On cpp side there is associated SpecializationInfo entry in PipelineShaderStageCreateInfo
 
 struct Entity {
 	uvec2 pos;
@@ -173,31 +173,20 @@ void main() {
 		}
 		count = count + 1;
 	}
-
-	//steps[id][0] = uvec2(entities[id].pos.x,entities[id].pos.y);
-	//steps[id][1] = uvec2(count,0);//uvec2(h(entities[id].pos),0);//uvec2(dg.dims.x,dg.dims.y);
-	//steps[id][2] = uvec2(dg.goal.x,dg.goal.y);
 	
-	
-	//reconstruct path
-	//ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
-	//steps[id][0] = step;//uvec2(current.x, current.y);
 
 
 	for(int i=0; i<20; i++) {
 		steps[id][i] = ivec2(0,0);
 	}
 
+	//reconstruct path
 	int s = 0;
-	
 	while(current != start && s < numSteps/*min(h(start),numSteps)*/) {
-		//current = cameFrom[currentIdx];
 		currentIdx = posToMapIdx(current);
 		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
 		steps[id][s] = step;//uvec2(current.x, current.y);
 		current = cameFrom[currentIdx];
 		s++;
 	}
-	//steps[id][0] =ivec2(start);
-	//steps[id][0] = ivec2(id,0);
 }

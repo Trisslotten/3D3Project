@@ -848,9 +848,11 @@ void Renderer::transferComputeDataToHost() {
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitDstStageMask = &stageFlags;
 
-	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueSubmit(transferQueue, 1, &submitInfo, fen_transfer);
 
-	vkQueueWaitIdle(transferQueue);
+	//vkQueueWaitIdle(transferQueue);
+	vkWaitForFences(device, 1, &fen_transfer, true, 1000000000);
+	vkResetFences(device, 1, &fen_transfer);
 	vkResetCommandPool(device, transferCommandPool, 0);
 	//delete astarSteps;
 	//int stepLen = numEntities * preComputedSteps;
