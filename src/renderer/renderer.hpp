@@ -38,7 +38,7 @@ class Renderer
 {
 public:
 	Renderer() : 
-		threadPool(GLOBAL_NUM_THREADS), 
+		threadPool(GLOBAL_NUM_THREADS-1), 
 		texture(this)
 	{}
 
