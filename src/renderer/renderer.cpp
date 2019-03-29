@@ -872,9 +872,7 @@ void Renderer::transferComputeDataToHost() {
 
 	vkQueueSubmit(transferQueue, 1, &submitInfo, fen_transfer);
 
-	//vkQueueWaitIdle(transferQueue);
-	vkWaitForFences(device, 1, &fen_transfer, true, 1000000000);
-	vkResetFences(device, 1, &fen_transfer);
+	vkQueueWaitIdle(transferQueue);
 	vkResetCommandPool(device, transferCommandPool, 0);
 	//delete astarSteps;
 	//int stepLen = numEntities * preComputedSteps;
@@ -991,7 +989,7 @@ void Renderer::transferComputeDataToDevice() {
 	submitInfo.pSignalSemaphores = &sem_transferToDevice;
 	submitInfo.signalSemaphoreCount = 1;
 
-	vkQueueSubmit(transferQueue, 1, &submitInfo, fen_transfer);
+	vkQueueSubmit(transferQueue, 1, &submitInfo, NULL);
 	//vkQueueWaitIdle(transferQueue);
 
 	vkResetCommandPool(device, transferCommandPool, 0);
@@ -1119,8 +1117,8 @@ void Renderer::executeCompute() {
 	};
 
 	VkFence fences = { fen_transfer };
-	vkWaitForFences(device, 1, &fences, VK_TRUE, 1000000000);
-	vkResetFences(device, 1, &fences);
+	//vkWaitForFences(device, 1, &fences, VK_TRUE, SIZE_MAX);
+	//vkResetFences(device, 1, &fences);
 
 	vkBeginCommandBuffer(computeCommandBuffer, &commandBufferBeginInfo);
 
@@ -1150,14 +1148,14 @@ void Renderer::executeCompute() {
 	//wait for transferToDevice, signal computeDone
 	VkPipelineStageFlags stageFlags = { VK_PIPELINE_STAGE_TRANSFER_BIT };
 
-	//submitInfo.pWaitSemaphores = &sem_transferToDevice;
-	//submitInfo.waitSemaphoreCount = 1;
-	//submitInfo.pWaitDstStageMask = &stageFlags;
-	//submitInfo.pSignalSemaphores = &sem_computeDone;
-	//submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &sem_transferToDevice;
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitDstStageMask = &stageFlags;
+	submitInfo.pSignalSemaphores = &sem_computeDone;
+	submitInfo.signalSemaphoreCount = 1;
 
 	vkQueueSubmit(computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkResetCommandPool(device,computeCommandPool, 0);
+	//vkResetCommandPool(device,computeCommandPool, 0);
 
 	//vkQueueWaitIdle(computeQueue);
 	transferComputeDataToHost();
