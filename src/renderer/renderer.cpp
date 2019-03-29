@@ -520,18 +520,18 @@ void Renderer::createLogicalDevice()
 
 	float queuePriority[] = 
 	{
-		1.f,
-		1.f,
-		1.f,
 		1.f
 	};
 
-	VkDeviceQueueCreateInfo queueCreateInfo = {};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = familyIndices.graphicsFamily;
-	queueCreateInfo.queueCount = 4;
-	queueCreateInfo.pQueuePriorities = queuePriority;
-	queueCreateInfos.push_back(queueCreateInfo);
+	for (auto queueFamily : uniqueQueueFamilies)
+	{
+		VkDeviceQueueCreateInfo queueCreateInfo = {};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamily;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.pQueuePriorities = queuePriority;
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
 
 	VkPhysicalDeviceFeatures deviceFeatures = {};
 
@@ -553,9 +553,9 @@ void Renderer::createLogicalDevice()
 		throw std::runtime_error("failed to create logical device!");
 
 	vkGetDeviceQueue(device, familyIndices.graphicsFamily, 0, &graphicsQueue);
-	vkGetDeviceQueue(device, familyIndices.presentFamily,  1, &presentQueue);
-	vkGetDeviceQueue(device, familyIndices.computeFamily,  2, &computeQueue);
-	vkGetDeviceQueue(device, familyIndices.transferFamily, 3, &transferQueue);
+	vkGetDeviceQueue(device, familyIndices.presentFamily,  0, &presentQueue);
+	vkGetDeviceQueue(device, familyIndices.computeFamily,  0, &computeQueue);
+	vkGetDeviceQueue(device, familyIndices.transferFamily, 0, &transferQueue);
 
 	
 	std::cout << "Q: " << graphicsQueue << "\n";
@@ -1118,9 +1118,8 @@ void Renderer::executeCompute() {
 	  0
 	};
 
-
 	VkFence fences = { fen_transfer };
-	vkWaitForFences(device, 1, &fences, true, 1000000000);
+	vkWaitForFences(device, 1, &fences, VK_TRUE, 1000000000);
 	vkResetFences(device, 1, &fences);
 
 	vkBeginCommandBuffer(computeCommandBuffer, &commandBufferBeginInfo);
@@ -1878,7 +1877,7 @@ VkPresentModeKHR Renderer::chooseSwapPresentMode(const std::vector<VkPresentMode
 	{
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 		{
-			return availablePresentMode;
+			//return availablePresentMode;
 		}
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;

@@ -11,7 +11,7 @@
 extern int GLOBAL_NUM_THREADS;
 extern int GLOBAL_NUM_ENTITIES;
 
-#define MAX_DRAW_ENTITIES 128
+#define MAX_DRAW_ENTITIES 256
 #define NUM_UNIFORM_FLOATS 3
 
 struct QueueFamilyIndices
