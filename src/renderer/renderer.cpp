@@ -1644,7 +1644,7 @@ void Renderer::createCommandPools()
 	{
 		VkCommandPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.transferFamily;
 		poolInfo.flags = 0; // Optional
 		if (vkCreateCommandPool(device, &poolInfo, nullptr, &singleTimeCommandsPool) != VK_SUCCESS)
 		{
