@@ -35,6 +35,8 @@ void Application::run()
 		update();
 		glfwPollEvents();
 	}
+	// :^)
+	exit(0);
 }
 
 void Application::init()
@@ -82,4 +84,5 @@ void Application::cleanup()
 {
 	renderer.cleanup();
 	cleaned = true;
+	astarComputeThread.detach();
 }

@@ -281,9 +281,6 @@ void Renderer::render()
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
-	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
-		throw std::runtime_error("failed to submit draw command buffer!");
-
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	presentInfo.waitSemaphoreCount = 1;
@@ -293,7 +290,18 @@ void Renderer::render()
 	presentInfo.pSwapchains = swapChains;
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr; // Optional
-	vkQueuePresentKHR(presentQueue, &presentInfo);
+
+	if (computeQueueSameAsGraphicsAndPresent())
+		queueMutex.lock();
+
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+		throw std::runtime_error("failed to submit draw command buffer!");
+	if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS)
+		throw std::runtime_error("failed to submit draw command buffer!");
+
+	if (computeQueueSameAsGraphicsAndPresent())
+		queueMutex.unlock();
+
 
 	if (fpsTimer.elapsed() > 1.0)
 	{
@@ -557,11 +565,10 @@ void Renderer::createLogicalDevice()
 	vkGetDeviceQueue(device, familyIndices.computeFamily,  0, &computeQueue);
 	vkGetDeviceQueue(device, familyIndices.transferFamily, 0, &transferQueue);
 
-	
-	std::cout << "Q: " << graphicsQueue << "\n";
-	std::cout << "Q: " << presentQueue << "\n";
-	std::cout << "Q: " << computeQueue << "\n";
-	std::cout << "Q: " << transferQueue << "\n";
+	std::cout << "Graphics QueuePtr: " << graphicsQueue << "\n";
+	std::cout << "Present  QueuePtr: " << presentQueue << "\n";
+	std::cout << "Compute  QueuePtr: " << computeQueue << "\n";
+	std::cout << "Transfer QueuePtr: " << transferQueue << "\n";
 	
 }
 
@@ -840,6 +847,7 @@ void Renderer::createTransferCommandBuffer() {
 	};
 
 	VkResult res = vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &transferCommandBuffer);
+	VkResult res2 = vkAllocateCommandBuffers(device, &commandBufferAllocateInfo, &transferCommandBuffer2);
 
 	if (res != VK_SUCCESS) {
 		printf("Failed to allocate transfer command buffer.\n");
@@ -851,29 +859,29 @@ void Renderer::transferComputeDataToHost() {
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
+	vkBeginCommandBuffer(transferCommandBuffer2, &beginInfo);
 
 	VkBufferCopy copyRegion = {};
 	copyRegion.srcOffset = 0; // Optional
 	copyRegion.dstOffset = 0; // Optional
 	copyRegion.size = stepsSize;
-	vkCmdCopyBuffer(transferCommandBuffer, steps_buffer_dst, steps_buffer_src, 1, &copyRegion);
+	vkCmdCopyBuffer(transferCommandBuffer2, steps_buffer_dst, steps_buffer_src, 1, &copyRegion);
 
-	vkEndCommandBuffer(transferCommandBuffer);
+	vkEndCommandBuffer(transferCommandBuffer2);
 
 	VkPipelineStageFlags stageFlags = { VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &transferCommandBuffer;
+	submitInfo.pCommandBuffers = &transferCommandBuffer2;
 	submitInfo.pWaitSemaphores = &sem_computeDone;
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitDstStageMask = &stageFlags;
 
-	vkQueueSubmit(transferQueue, 1, &submitInfo, fen_transfer);
+	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 
 	vkQueueWaitIdle(transferQueue);
-	vkResetCommandPool(device, transferCommandPool, 0);
+	//vkResetCommandPool(device, transferCommandPool, 0);
 	//delete astarSteps;
 	//int stepLen = numEntities * preComputedSteps;
 	//astarSteps = new ivec2[stepLen];
@@ -992,7 +1000,7 @@ void Renderer::transferComputeDataToDevice() {
 	vkQueueSubmit(transferQueue, 1, &submitInfo, NULL);
 	//vkQueueWaitIdle(transferQueue);
 
-	vkResetCommandPool(device, transferCommandPool, 0);
+	//vkResetCommandPool(device, transferCommandPool, 0);
 	//vkFreeCommandBuffers(device, transferCommandPool, 1, &transferCommandBuffer);
 }
 
@@ -1154,7 +1162,15 @@ void Renderer::executeCompute() {
 	submitInfo.pSignalSemaphores = &sem_computeDone;
 	submitInfo.signalSemaphoreCount = 1;
 
+	
+	if (computeQueueSameAsGraphicsAndPresent())
+		queueMutex.lock();
+
 	vkQueueSubmit(computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
+
+	if (computeQueueSameAsGraphicsAndPresent())
+		queueMutex.unlock();
+	
 	//vkResetCommandPool(device,computeCommandPool, 0);
 
 	//vkQueueWaitIdle(computeQueue);
@@ -1642,7 +1658,7 @@ void Renderer::createCommandPools()
 	{
 		VkCommandPoolCreateInfo poolInfo = {};
 		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = queueFamilyIndices.transferFamily;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 		poolInfo.flags = 0; // Optional
 		if (vkCreateCommandPool(device, &poolInfo, nullptr, &singleTimeCommandsPool) != VK_SUCCESS)
 		{
@@ -1875,7 +1891,7 @@ VkPresentModeKHR Renderer::chooseSwapPresentMode(const std::vector<VkPresentMode
 	{
 		if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR)
 		{
-			//return availablePresentMode;
+			return availablePresentMode;
 		}
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;
@@ -2024,8 +2040,8 @@ void Renderer::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(transferQueue);
+	vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device, singleTimeCommandsPool, 1, &commandBuffer);
 }

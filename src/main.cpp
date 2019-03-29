@@ -9,7 +9,7 @@ int main(void)
 {
 	// TODO: set num threads from program arguments
 	GLOBAL_NUM_THREADS = 8;
-	GLOBAL_NUM_ENTITIES = 10;
+	GLOBAL_NUM_ENTITIES = 50;
 
 	Application app;
 	try

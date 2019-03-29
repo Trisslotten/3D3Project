@@ -7,6 +7,7 @@
 #include "../util/timer.hpp"
 #include "texture2D.hpp"
 #include "constantbuffer.hpp"
+#include <mutex>
 
 extern int GLOBAL_NUM_THREADS;
 extern int GLOBAL_NUM_ENTITIES;
@@ -104,6 +105,11 @@ private:
 	VkShaderModule createShaderModule(const std::string& filepath);
 	void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
 	uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+	bool computeQueueSameAsGraphicsAndPresent()
+	{
+		return familyIndices.computeFamily == familyIndices.graphicsFamily || familyIndices.computeFamily == familyIndices.presentFamily;
+	}
+
 
 	VkCommandBuffer beginSingleTimeCommands();
 	void endSingleTimeCommands(VkCommandBuffer commandBuffer);
@@ -176,6 +182,8 @@ private:
 	VkQueue computeQueue;
 	VkQueue transferQueue;
 
+	std::mutex queueMutex;
+
 	uint32_t timestampValidBitsGraphicsQueue;
 	uint32_t timestampValidBitsPresentQueue;
 	std::vector<VkQueryPool> queryPools;
@@ -188,6 +196,7 @@ private:
 	//transfer
 	VkCommandPool transferCommandPool;
 	VkCommandBuffer transferCommandBuffer;
+	VkCommandBuffer transferCommandBuffer2;
 
 	VkFence fen_transfer;
 
