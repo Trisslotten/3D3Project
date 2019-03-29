@@ -851,9 +851,6 @@ void Renderer::transferComputeDataToHost() {
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	VkFence fences = { fen_transfer };
-
-	//vkWaitForFences(device, 1, &fences, true, 10000000);
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
 
 	VkBufferCopy copyRegion = {};
@@ -992,7 +989,7 @@ void Renderer::transferComputeDataToDevice() {
 	submitInfo.pSignalSemaphores = &sem_transferToDevice;
 	submitInfo.signalSemaphoreCount = 1;
 
-	vkQueueSubmit(transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+	vkQueueSubmit(transferQueue, 1, &submitInfo, fen_transfer);
 	//vkQueueWaitIdle(transferQueue);
 
 	vkResetCommandPool(device, transferCommandPool, 0);
@@ -1118,6 +1115,11 @@ void Renderer::executeCompute() {
 	  VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
 	  0
 	};
+
+
+	VkFence fences = { fen_transfer };
+	vkWaitForFences(device, 1, &fences, true, 1000000000);
+	vkResetFences(device, 1, &fences);
 
 	vkBeginCommandBuffer(computeCommandBuffer, &commandBufferBeginInfo);
 

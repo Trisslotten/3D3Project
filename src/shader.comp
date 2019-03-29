@@ -110,7 +110,7 @@ void main() {
 	uint fscore[5000];
 
 	for(int i=0; i<5000; i++) {
-		//cameFrom[i] = uvec2(0,0);
+		//cameFrom[i] = uvec2(1000,1000);
 		gscore[i] = 10000000;
 		fscore[i] = 10000000;
 	}
@@ -153,7 +153,7 @@ void main() {
 			uint neIdx = posToMapIdx(ne);
 
 			//if obstacle, ignore
-			if(map[neIdx] == 1)
+			if(map[neIdx] != 0)
 				continue;
 			
 
@@ -184,13 +184,13 @@ void main() {
 	//steps[id][0] = step;//uvec2(current.x, current.y);
 
 
-	for(int i=0; i<numSteps; i++) {
+	for(int i=0; i<20; i++) {
 		steps[id][i] = ivec2(0,0);
 	}
 
 	int s = 0;
 	
-	while(current != start && s < min(h(start),numSteps)) {
+	while(current != start && s < numSteps/*min(h(start),numSteps)*/) {
 		//current = cameFrom[currentIdx];
 		currentIdx = posToMapIdx(current);
 		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
