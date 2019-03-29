@@ -48,8 +48,8 @@ void Application::init()
 	renderer.initCompute(world.mapSize, world.entitiesSize);
 	
 	renderer.mapComputeMemory(world.origMap, world.entities.data(), &world.getMapDims(), &world.goal, world.mapSize, world.entitiesSize);
-	renderer.executeCompute();
-	world.setSteps(renderer.getSteps());
+	//renderer.executeCompute();
+	//world.setSteps(renderer.getSteps());
 	astarComputeThread = std::thread(&Application::updateAstar, this);
 }
 
@@ -68,8 +68,8 @@ void Application::update()
 		world.updateEntities();
 
 		timer.restart();
-	}
-	*/
+	}*/
+	
 	for (auto e : world.getEntities())
 	{
 		renderer.submitEntity(Entity(e.x,e.y));
