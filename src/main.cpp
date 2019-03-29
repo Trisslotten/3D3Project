@@ -2,12 +2,14 @@
 #include <iostream>
 #include "application.hpp"
 
-int GLOBAL_NUM_THREADS(4);
+int GLOBAL_NUM_THREADS = 4;
+int GLOBAL_NUM_ENTITIES = 10;
 
 int main(void)
 {
 	// TODO: set num threads from program arguments
 	GLOBAL_NUM_THREADS = 1;
+	GLOBAL_NUM_ENTITIES = 10;
 
 	Application app;
 	try
