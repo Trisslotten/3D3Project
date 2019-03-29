@@ -1151,11 +1151,11 @@ void Renderer::executeCompute() {
 	//wait for transferToDevice, signal computeDone
 	VkPipelineStageFlags stageFlags = { VK_PIPELINE_STAGE_TRANSFER_BIT };
 
-	submitInfo.pWaitSemaphores = &sem_transferToDevice;
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitDstStageMask = &stageFlags;
-	submitInfo.pSignalSemaphores = &sem_computeDone;
-	submitInfo.signalSemaphoreCount = 1;
+	//submitInfo.pWaitSemaphores = &sem_transferToDevice;
+	//submitInfo.waitSemaphoreCount = 1;
+	//submitInfo.pWaitDstStageMask = &stageFlags;
+	//submitInfo.pSignalSemaphores = &sem_computeDone;
+	//submitInfo.signalSemaphoreCount = 1;
 
 	vkQueueSubmit(computeQueue, 1, &submitInfo, VK_NULL_HANDLE);
 	vkResetCommandPool(device,computeCommandPool, 0);
@@ -1838,8 +1838,8 @@ QueueFamilyIndices Renderer::findQueueFamilies(VkPhysicalDevice device)
 			if (presentSupport)
 				indices.presentFamily = i;
 		}
-		if (indices.isComplete())
-			break;
+		/*if (indices.isComplete())
+			break;*/
 		i++;
 	}
 
