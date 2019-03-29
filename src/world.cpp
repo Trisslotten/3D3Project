@@ -53,6 +53,8 @@ void World::init(std::string filename, unsigned int entityCount) {
 	std::vector<unsigned char> image; //the raw pixels
 	unsigned width, height;
 
+	steps = new ivec2[20* entityCount];
+
 	srand(time(NULL));
 
 	//decode
