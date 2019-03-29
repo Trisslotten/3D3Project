@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <array>
 #include <unordered_map>
+#include <functional>
 
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
@@ -89,7 +90,7 @@ void Renderer::init(const std::string& map)
 	createCommandBuffers();
 	createSyncObjects();
 
-	benchmarkValues = new uint32_t(MAX_BENCHMARK_VALUES);
+	benchmarkValues = new uint32_t[MAX_BENCHMARK_VALUES];
 
 	posBuffer = new float[(uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES];
 
@@ -105,6 +106,8 @@ void Renderer::render()
 
 	updateUniformBuffer();
 
+
+	std::vector<std::function<void(void)>> tasks;
 	//std::cout << "/////////////////////////\n";
 	//std::cout << "DrawCount = " << drawCount << "\n";
 	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
@@ -115,7 +118,7 @@ void Renderer::render()
 			end = drawCount;
 
 		//std::cout << "\t(start, end) = (" << start << ", " << end << ")\n";
-		threadPool.queueTask([this, i, start, end]
+		tasks.push_back([this, i, start, end]
 		{
 			int index = commandIndex(i);
 			vkResetCommandPool(device, commandPools[index], 0);
@@ -158,6 +161,23 @@ void Renderer::render()
 		});
 	}
 
+	if (GLOBAL_NUM_THREADS >= 1)
+	{
+		if (GLOBAL_NUM_THREADS > 1)
+		{
+			for (int i = 1; i < tasks.size(); i++)
+			{
+				threadPool.queueTask(tasks[i]);
+			}
+		}
+		tasks[0]();
+	}
+	else
+	{
+		throw std::runtime_error("GLOBAL_NUM_THREADS must be larger than one");
+	}
+
+
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
@@ -173,7 +193,6 @@ void Renderer::render()
 	vkResetCommandPool(device, mainCommandPools[currentFrame], 0);
 	
 	std::vector<VkCommandBuffer> secondarybuffers;
-
 
 	vkResetCommandPool(device, mapCommandPools[currentFrame], 0);
 	{
@@ -236,9 +255,10 @@ void Renderer::render()
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
+	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
+
 	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
-	//vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
 	
 	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
 		secondarybuffers.push_back(entityCommandBuffers[commandIndex(i)]);
@@ -247,9 +267,10 @@ void Renderer::render()
 	threadPool.waitForTasks();
 	vkCmdExecuteCommands(currentCommandBuffer, secondarybuffers.size(), secondarybuffers.data());
 
+	vkCmdEndRenderPass(currentCommandBuffer);
+
 	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 1);
 
-	vkCmdEndRenderPass(currentCommandBuffer);
 	if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS)
 		throw std::runtime_error("failed to record command buffer!");
 
@@ -286,26 +307,27 @@ void Renderer::render()
 	uint32_t timeStamps[2]{};
 
 	
-	/*vkGetQueryPoolResults(
+	vkGetQueryPoolResults(
 		device,
 		queryPools[currentFrame],
 		0, 2,
 		2 * sizeof(uint32_t),
 		timeStamps,
 		sizeof(uint32_t),
-		VK_QUERY_RESULT_WAIT_BIT);*/
+		VK_QUERY_RESULT_WAIT_BIT);
 	
-	//uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
+	uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
 
 	if (numValues < MAX_BENCHMARK_VALUES)
 	{
-		//benchmarkValues[numValues] = elapsed;
+		benchmarkValues[numValues] = elapsed;
 		numValues++;
 		if (numValues >= MAX_BENCHMARK_VALUES)
 		{
 			saveBenchmarkValues();
 		}
 	}
+	
 
 	toDraw.clear();
 	drawCount = 0;
@@ -925,14 +947,14 @@ void Renderer::updateUniformBuffer()
 
 void Renderer::saveBenchmarkValues()
 {
-	/*std::string content = "";
+	std::string content = "";
 	for (int i = 0; i < MAX_BENCHMARK_VALUES; i++)
 	{
 		content += std::to_string(benchmarkValues[i]) + "\n";
 	}
 	std::ofstream file("benchmark.txt");
 	file << content;
-	file.close();*/
+	file.close();
 }
 
 void Renderer::transferComputeDataToDevice() {
