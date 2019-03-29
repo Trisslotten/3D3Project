@@ -5,6 +5,7 @@
 #include "renderer/renderer.hpp"
 #include "world.h"
 #include "util/timer.hpp"
+#include <mutex>
 
 
 class Application
@@ -22,6 +23,7 @@ private:
 	World world;
 	Timer timer;
 
+	std::mutex entityMutex;
 	std::thread astarComputeThread;
 
 	bool cleaned = false;

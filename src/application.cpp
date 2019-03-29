@@ -20,6 +20,7 @@ void Application::updateAstar() {
 		}
 
 		if (timer.elapsed() >= 0.02) {
+			std::lock_guard<std::mutex> lock(entityMutex);
 			world.updateEntities();
 			timer.restart();
 		}
@@ -72,10 +73,17 @@ void Application::update()
 		timer.restart();
 	}*/
 	
-	for (auto e : world.getEntities())
+
+	std::vector<uvec2> entities;
+	{
+		std::lock_guard<std::mutex> lock(entityMutex);
+		entities = world.getEntities();
+	}
+	for (auto e : entities)
 	{
 		renderer.submitEntity(Entity(e.x,e.y));
 	}
+
 	renderer.submitEntity(Entity(world.goal.x, world.goal.y, true));
 	renderer.render();
 }
