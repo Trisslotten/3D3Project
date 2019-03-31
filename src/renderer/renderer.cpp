@@ -90,7 +90,7 @@ void Renderer::init(const std::string& map)
 	createCommandBuffers();
 	createSyncObjects();
 
-	benchmarkValues = new uint32_t[MAX_BENCHMARK_VALUES];
+	benchmarkDrawValues.reserve(NUM_BENCHMARK_FRAMES * 2);
 
 	posBuffer = new float[(uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES];
 
@@ -297,7 +297,7 @@ void Renderer::render()
 	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
 		throw std::runtime_error("failed to submit draw command buffer!");
 	if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS)
-		throw std::runtime_error("failed to submit draw command buffer!");
+		throw std::runtime_error("failed to submit to present queue buffer!");
 
 	if (computeQueueSameAsGraphicsAndPresent())
 		queueMutex.unlock();
@@ -312,8 +312,8 @@ void Renderer::render()
 	}
 	fpsFrameCount++;
 
-	uint32_t timeStamps[2]{};
 
+	uint32_t timeStamps[2]{};
 	
 	vkGetQueryPoolResults(
 		device,
@@ -326,11 +326,20 @@ void Renderer::render()
 	
 	uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
 
-	if (numValues < MAX_BENCHMARK_VALUES)
+	if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
 	{
-		benchmarkValues[numValues] = elapsed;
-		numValues++;
-		if (numValues >= MAX_BENCHMARK_VALUES)
+		if (benchmarkFrameCount == 0)
+		{
+			benchmarkFirstDraw = timeStamps[0];
+		}
+		uint32_t frameStart = (timeStamps[0] - benchmarkFirstDraw) * this->timestampToNsScaling;
+		uint32_t frameEnd   = (timeStamps[1] - benchmarkFirstDraw) * this->timestampToNsScaling;
+
+		benchmarkDrawValues.push_back(frameStart);
+		benchmarkDrawValues.push_back(frameEnd);
+		
+		benchmarkFrameCount++;
+		if (benchmarkFrameCount >= NUM_BENCHMARK_FRAMES)
 		{
 			saveBenchmarkValues();
 		}
@@ -340,6 +349,7 @@ void Renderer::render()
 	toDraw.clear();
 	drawCount = 0;
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
 }
 
 void Renderer::cleanup()
@@ -949,18 +959,6 @@ void Renderer::updateUniformBuffer()
 	vkMapMemory(device, uniformBuffersMemory[currentFrame], 0, (uniformBufferAlignment) * MAX_DRAW_ENTITIES, 0, &data);
 	memcpy(data, posBuffer, (uniformBufferAlignment) * MAX_DRAW_ENTITIES);
 	vkUnmapMemory(device, uniformBuffersMemory[currentFrame]);
-}
-
-void Renderer::saveBenchmarkValues()
-{
-	std::string content = "";
-	for (int i = 0; i < MAX_BENCHMARK_VALUES; i++)
-	{
-		content += std::to_string(benchmarkValues[i]) + "\n";
-	}
-	std::ofstream file("benchmark.txt");
-	file << content;
-	file.close();
 }
 
 void Renderer::transferComputeDataToDevice() {
@@ -2044,5 +2042,15 @@ void Renderer::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 	vkQueueWaitIdle(graphicsQueue);
 
 	vkFreeCommandBuffers(device, singleTimeCommandsPool, 1, &commandBuffer);
+}
+
+void Renderer::saveBenchmarkValues()
+{
+	std::string result;
+	for (auto t : benchmarkDrawValues)
+		result += std::to_string(t) + "\n";
+	std::ofstream file("benchmark.txt");
+	file << result;
+	file.close();
 }
 

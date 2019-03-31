@@ -94,7 +94,6 @@ private:
 	void transferComputeDataToHost();
 
 	void updateUniformBuffer();
-	void saveBenchmarkValues();
 
 	bool isDeviceSuitable(VkPhysicalDevice device);
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
@@ -121,7 +120,7 @@ private:
 
 	friend class Texture2D;
 
-	const int MAX_FRAMES_IN_FLIGHT = 3;
+	const int MAX_FRAMES_IN_FLIGHT = 2;
 	size_t currentFrame = 0;
 	int width = 800;
 	int height = 600;
@@ -133,9 +132,11 @@ private:
 
 
 	// benchmark values
-	uint64_t numValues;
-	const uint64_t MAX_BENCHMARK_VALUES = 100;
-	uint32_t* benchmarkValues;
+	const uint32_t NUM_BENCHMARK_FRAMES = 50;
+	uint32_t benchmarkFrameCount = 0;
+	uint32_t benchmarkFirstDraw;
+	std::vector<uint32_t> benchmarkDrawValues;
+	void saveBenchmarkValues();
 
 	Timer fpsTimer;
 	double fpsFrameCount;
