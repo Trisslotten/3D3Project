@@ -132,10 +132,13 @@ private:
 
 
 	// benchmark values
-	const uint32_t NUM_BENCHMARK_FRAMES = 50;
+	const uint32_t NUM_BENCHMARK_FRAMES = 2000;
 	uint32_t benchmarkFrameCount = 0;
 	uint32_t benchmarkFirstDraw;
+	bool benchmarkIsFirstCompute = true;
+	uint32_t benchmarkFirstCompute = 0;
 	std::vector<uint32_t> benchmarkDrawValues;
+	std::vector<uint32_t> benchmarkComputeValues;
 	void saveBenchmarkValues();
 
 	Timer fpsTimer;
@@ -189,6 +192,9 @@ private:
 	uint32_t timestampValidBitsPresentQueue;
 	std::vector<VkQueryPool> queryPools;
 	uint32_t timestampToNsScaling;
+
+	VkQueryPool computeQueryPool;
+
 
 	VkDebugReportCallbackEXT callback;
 

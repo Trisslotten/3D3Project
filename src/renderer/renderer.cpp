@@ -242,7 +242,11 @@ void Renderer::render()
 	if (vkBeginCommandBuffer(currentCommandBuffer, &beginInfo) != VK_SUCCESS)
 		throw std::runtime_error("failed to begin recording command buffer!");
 
-	vkCmdResetQueryPool(currentCommandBuffer, queryPools[currentFrame], 0, 2); // reset both query slots
+	///////////////
+	vkCmdResetQueryPool(currentCommandBuffer, queryPools[currentFrame], 0, 2);
+	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
+	///////////////
+
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -255,7 +259,6 @@ void Renderer::render()
 	renderPassInfo.clearValueCount = 1;
 	renderPassInfo.pClearValues = &clearColor;
 
-	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 0);
 
 	vkCmdBeginRenderPass(currentCommandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
 
@@ -269,7 +272,10 @@ void Renderer::render()
 
 	vkCmdEndRenderPass(currentCommandBuffer);
 
+	///////////////
 	vkCmdWriteTimestamp(currentCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, queryPools[currentFrame], 1);
+	///////////////
+
 
 	if (vkEndCommandBuffer(currentCommandBuffer) != VK_SUCCESS)
 		throw std::runtime_error("failed to record command buffer!");
@@ -323,8 +329,6 @@ void Renderer::render()
 		timeStamps,
 		sizeof(uint32_t),
 		VK_QUERY_RESULT_WAIT_BIT);
-	
-	uint32_t elapsed = (timeStamps[1] - timeStamps[0]) * this->timestampToNsScaling;
 
 	if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
 	{
@@ -877,6 +881,7 @@ void Renderer::transferComputeDataToHost() {
 	copyRegion.size = stepsSize;
 	vkCmdCopyBuffer(transferCommandBuffer2, steps_buffer_dst, steps_buffer_src, 1, &copyRegion);
 
+
 	vkEndCommandBuffer(transferCommandBuffer2);
 
 	VkPipelineStageFlags stageFlags = { VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT };
@@ -967,7 +972,6 @@ void Renderer::transferComputeDataToDevice() {
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	vkBeginCommandBuffer(transferCommandBuffer, &beginInfo);
-	
 
 	VkBufferCopy copyRegion = {};
 	copyRegion.srcOffset = 0; // Optional
@@ -1128,12 +1132,21 @@ void Renderer::executeCompute() {
 
 	vkBeginCommandBuffer(computeCommandBuffer, &commandBufferBeginInfo);
 
+	//////////////////////
+	vkCmdResetQueryPool(computeCommandBuffer, computeQueryPool, 0, 2);
+	vkCmdWriteTimestamp(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, computeQueryPool, 0);
+	//////////////////////
+
 	vkCmdBindPipeline(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
 
 	vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE,
 		computePipelineLayout, 0, 1, &computeDescriptorSet, 0, 0);
 
 	vkCmdDispatch(computeCommandBuffer, numEntities, 1, 1);
+
+	//////////////////////
+	vkCmdWriteTimestamp(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, computeQueryPool, 1);
+	//////////////////////
 
 	vkEndCommandBuffer(computeCommandBuffer);
 
@@ -1173,6 +1186,31 @@ void Renderer::executeCompute() {
 
 	//vkQueueWaitIdle(computeQueue);
 	transferComputeDataToHost();
+
+
+	uint32_t timeStamps[2]{};
+	vkGetQueryPoolResults(
+		device,
+		computeQueryPool,
+		0, 2,
+		2 * sizeof(uint32_t),
+		timeStamps,
+		sizeof(uint32_t),
+		VK_QUERY_RESULT_WAIT_BIT);
+	
+	if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
+	{
+		if (benchmarkIsFirstCompute)
+		{
+			benchmarkIsFirstCompute = false;
+			benchmarkFirstCompute = timeStamps[0];
+		}
+		for (int i = 0; i < 2; i++)
+		{
+			uint32_t time = (timeStamps[i] - benchmarkFirstCompute) * this->timestampToNsScaling;
+			benchmarkComputeValues.push_back(time);
+		}
+	}
 }
 
 void Renderer::initCompute(size_t sizeMap, size_t sizeEntites)
@@ -1798,6 +1836,14 @@ void Renderer::createQueryPool()
 		createInfo.queryCount = 2;
 		vkCreateQueryPool(device, &createInfo, nullptr, &queryPools[i]);
 	}
+
+	VkQueryPoolCreateInfo createInfo;
+	createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+	createInfo.pNext = nullptr;
+	createInfo.flags = 0;
+	createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+	createInfo.queryCount = 2;
+	vkCreateQueryPool(device, &createInfo, nullptr, &computeQueryPool);
 }
 
 void Renderer::calcUniformBufferAlignment()
@@ -2047,10 +2093,18 @@ void Renderer::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 void Renderer::saveBenchmarkValues()
 {
 	std::string result;
-	for (auto t : benchmarkDrawValues)
-		result += std::to_string(t) + "\n";
+	auto dlen = benchmarkDrawValues.size();
+	auto clen = benchmarkComputeValues.size();
+	for (int i = 0; i < glm::max(dlen, clen); i++)
+	{
+		result += std::to_string(benchmarkDrawValues[i]) + "\t1\t";
+		if(i >= 2 && i < clen)
+			result += std::to_string(benchmarkComputeValues[i]) + "\t2";
+		result += "\n";
+	}
 	std::ofstream file("benchmark.txt");
 	file << result;
 	file.close();
+	std::cout << "saved benchmark data" << std::endl;
 }
 
