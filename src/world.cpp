@@ -2,6 +2,7 @@
 #include <math.h>
 #include "lodepng/lodepng.h"
 #include <time.h>
+#include <iostream>
 
 World::World() {
 
@@ -98,6 +99,7 @@ void World::init(std::string filename, unsigned int entityCount) {
 		entities.push_back(uvec2(pos.x, pos.y));
 		//entities.push_back(uvec2(5, 2));
 	}
+	std::cout << entities.size() << "\n";
 	emptySteps = new unsigned int[entities.size()];
 	
 	setNewGoal();

@@ -91,6 +91,7 @@ void Renderer::init(const std::string& map)
 	createSyncObjects();
 
 	benchmarkDrawValues.reserve(NUM_BENCHMARK_FRAMES * 2);
+	benchmarkRecordValues.reserve(NUM_BENCHMARK_FRAMES);
 
 	posBuffer = new float[(uniformBufferAlignment/sizeof(float)) * MAX_DRAW_ENTITIES];
 
@@ -105,7 +106,6 @@ void Renderer::render()
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
 	updateUniformBuffer();
-
 
 	std::vector<std::function<void(void)>> tasks;
 	//std::cout << "/////////////////////////\n";
@@ -161,6 +161,7 @@ void Renderer::render()
 		});
 	}
 
+	recordTimer.restart();
 	if (GLOBAL_NUM_THREADS >= 1)
 	{
 		if (GLOBAL_NUM_THREADS > 1)
@@ -176,7 +177,8 @@ void Renderer::render()
 	{
 		throw std::runtime_error("GLOBAL_NUM_THREADS must be larger than one");
 	}
-
+	threadPool.waitForTasks();
+	benchmarkRecordValues.push_back(recordTimer.elapsed());
 
 	uint32_t imageIndex;
 	vkAcquireNextImageKHR(device, swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
@@ -266,8 +268,6 @@ void Renderer::render()
 	for (int i = 0; i < glm::min((uint32_t)GLOBAL_NUM_THREADS, drawCount); i++)
 		secondarybuffers.push_back(entityCommandBuffers[commandIndex(i)]);
 
-	// do as much as possible before waiting for threads to finish
-	threadPool.waitForTasks();
 	vkCmdExecuteCommands(currentCommandBuffer, secondarybuffers.size(), secondarybuffers.data());
 
 	vkCmdEndRenderPass(currentCommandBuffer);
@@ -330,22 +330,25 @@ void Renderer::render()
 		sizeof(uint32_t),
 		VK_QUERY_RESULT_WAIT_BIT);
 
-	if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
+	if (GLOBAL_TESTING)
 	{
-		if (benchmarkFrameCount == 0)
+		if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
 		{
-			benchmarkFirstDraw = timeStamps[0];
-		}
-		uint32_t frameStart = (timeStamps[0] - benchmarkFirstDraw) * this->timestampToNsScaling;
-		uint32_t frameEnd   = (timeStamps[1] - benchmarkFirstDraw) * this->timestampToNsScaling;
+			if (benchmarkFrameCount == 0)
+			{
+				benchmarkFirstDraw = timeStamps[0];
+			}
+			uint32_t frameStart = (timeStamps[0] - benchmarkFirstDraw) * this->timestampToNsScaling;
+			uint32_t frameEnd = (timeStamps[1] - benchmarkFirstDraw) * this->timestampToNsScaling;
 
-		benchmarkDrawValues.push_back(frameStart);
-		benchmarkDrawValues.push_back(frameEnd);
-		
-		benchmarkFrameCount++;
-		if (benchmarkFrameCount >= NUM_BENCHMARK_FRAMES)
-		{
-			saveBenchmarkValues();
+			benchmarkDrawValues.push_back(frameStart);
+			benchmarkDrawValues.push_back(frameEnd);
+
+			benchmarkFrameCount++;
+			if (benchmarkFrameCount >= NUM_BENCHMARK_FRAMES)
+			{
+				saveBenchmarkValues();
+			}
 		}
 	}
 	
@@ -470,7 +473,7 @@ void Renderer::createInstance()
 							 | VK_DEBUG_REPORT_ERROR_BIT_EXT
 							 | VK_DEBUG_REPORT_WARNING_BIT_EXT
 							 //| VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT
-							 | VK_DEBUG_REPORT_DEBUG_BIT_EXT
+							 //| VK_DEBUG_REPORT_DEBUG_BIT_EXT
 							 //| VK_DEBUG_REPORT_INFORMATION_BIT_EXT
 							);
 		createInfo2.pfnCallback = debugCallback;
@@ -943,18 +946,21 @@ void Renderer::updateUniformBuffer()
 	}
 
 	int stride = uniformBufferAlignment / sizeof(float);
-	int i = 0; 
-	for (auto obj : posCount)
+	for (int i = 0; i < toDraw.size(); i++)
 	{
+		uint64_t x = toDraw[i].pos.x;
+		uint64_t y = toDraw[i].pos.y;
+		uint64_t id = x | (y << 32);
+		auto obj = posCount[id];
+
 		int index = i * stride;
-		posBuffer[index]     = obj.second.pos.x;
-		posBuffer[index + 1] = obj.second.pos.y;
-		posBuffer[index + 2] = obj.second.count;
-		i++;
+		posBuffer[index]     = obj.pos.x;
+		posBuffer[index + 1] = obj.pos.y;
+		posBuffer[index + 2] = obj.count;
 		drawCount++;
 	}
 
-	int index = i * stride;
+	int index = drawCount * stride;
 	posBuffer[index]     = goal.pos.x;
 	posBuffer[index + 1] = goal.pos.y;
 	posBuffer[index + 2] = 0;
@@ -1198,17 +1204,20 @@ void Renderer::executeCompute() {
 		sizeof(uint32_t),
 		VK_QUERY_RESULT_WAIT_BIT);
 	
-	if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
+	if (GLOBAL_TESTING)
 	{
-		if (benchmarkIsFirstCompute)
+		if (benchmarkFrameCount < NUM_BENCHMARK_FRAMES)
 		{
-			benchmarkIsFirstCompute = false;
-			benchmarkFirstCompute = timeStamps[0];
-		}
-		for (int i = 0; i < 2; i++)
-		{
-			uint32_t time = (timeStamps[i] - benchmarkFirstCompute) * this->timestampToNsScaling;
-			benchmarkComputeValues.push_back(time);
+			if (benchmarkIsFirstCompute)
+			{
+				benchmarkIsFirstCompute = false;
+				benchmarkFirstCompute = timeStamps[0];
+			}
+			for (int i = 0; i < 2; i++)
+			{
+				uint32_t time = (timeStamps[i] - benchmarkFirstCompute) * this->timestampToNsScaling;
+				benchmarkComputeValues.push_back(time);
+			}
 		}
 	}
 }
@@ -2092,19 +2101,71 @@ void Renderer::endSingleTimeCommands(VkCommandBuffer commandBuffer)
 
 void Renderer::saveBenchmarkValues()
 {
-	std::string result;
-	auto dlen = benchmarkDrawValues.size();
-	auto clen = benchmarkComputeValues.size();
-	for (int i = 0; i < glm::max(dlen, clen); i++)
 	{
-		result += std::to_string(benchmarkDrawValues[i]) + "\t1\t";
-		if(i >= 2 && i < clen)
-			result += std::to_string(benchmarkComputeValues[i]) + "\t2";
-		result += "\n";
+		std::string result;
+		auto dlen = benchmarkDrawValues.size();
+		auto clen = benchmarkComputeValues.size();
+		for (int i = 0; i < glm::max(dlen, clen); i++)
+		{
+			result += std::to_string(benchmarkDrawValues[i]) + "\t1\t";
+			if(i >= 2 && i < clen)
+				result += std::to_string(benchmarkComputeValues[i]) + "\t2";
+			result += "\n";
+		}
+		std::ofstream file("benchmark.txt");
+		file << result;
+		file.close();
+		std::cout << "saved benchmark data" << std::endl;	
 	}
-	std::ofstream file("benchmark.txt");
-	file << result;
-	file.close();
-	std::cout << "saved benchmark data" << std::endl;
+
+	
+	{
+		uint64_t avgDraw = 0;
+		for (int i = 0; i < benchmarkDrawValues.size(); i+=2)
+		{
+			auto start = benchmarkDrawValues[i];
+			auto end = benchmarkDrawValues[i+1];
+			avgDraw += static_cast<uint64_t>(end - start);
+		}
+		avgDraw /= benchmarkDrawValues.size();
+
+		uint64_t avgCompute = 0;
+		for (int i = 0; i < benchmarkComputeValues.size(); i += 2)
+		{
+			auto start = benchmarkComputeValues[i];
+			auto end = benchmarkComputeValues[i + 1];
+			avgCompute += static_cast<uint64_t>(end - start);
+		}
+		avgCompute /= benchmarkComputeValues.size();
+
+		std::string toWrite;
+
+	}
+
+	{
+		
+		double avgRecord = 0;
+		for (int i = 0; i < benchmarkRecordValues.size(); i++)
+		{
+			avgRecord += benchmarkRecordValues[i];
+		}
+		avgRecord *= 1000;
+		avgRecord /= benchmarkRecordValues.size();
+
+
+		std::string filename = "recordtime_E";
+		filename += std::to_string(GLOBAL_NUM_ENTITIES);
+		filename += "_T" + std::to_string(GLOBAL_NUM_THREADS);
+		filename += ".txt";
+		std::ofstream file(filename);
+		file << std::to_string(avgRecord);
+		file.close();
+	}
+
+
+
+	//system("pause");
+
+	exit(0);
 }
 

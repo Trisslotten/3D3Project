@@ -90,103 +90,137 @@ bool isInSet(in Set set, in uvec2 pos) {
 
 uint id;
 
+
+float uhash12(uvec2 x)
+{
+	uvec2 q = 1103515245U * ((x >> 1U) ^ (uvec2(x.y, x.x)));
+	uint  n = 1103515245U * ((q.x) ^ (q.y >> 3U));
+	return float(n) * (1.0 / float(0xffffffffU));
+}
+//float hash12(vec2 x) { return uhash12(uvec2((ivec2(500.*x) + 1073741824))); }
+
+
 void main() {
-	 id = gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
 
-	uint numSteps = 10;
-
-	uvec2 start = entities[id];
-	uvec2 current = start;
-	uint currentIdx = posToMapIdx(current);
-
-	Set closedSet;
-	Set openSet;
-	closedSet.count = 0;
-	openSet.count = 0;
-	AddSet(openSet, current);
-
-	uvec2 cameFrom[5000];
-	uint gscore[5000];
-	uint fscore[5000];
-
-	for(int i=0; i<5000; i++) {
-		//cameFrom[i] = uvec2(1000,1000);
-		gscore[i] = 10000000;
-		fscore[i] = 10000000;
-	}
-
-	gscore[currentIdx] = 0;
-	fscore[currentIdx] = h(current);
-
-	uint count = 0;
-	bool finished = false;
-	while(openSet.count > 0 && !finished  && hdist(start,current) < numSteps/*&& count < numSteps*/) {
-		int idx = 0;
-		uint lowest = 10000000;
-		for (int i=0; i < openSet.count; i++) {
-			uint score = fscore[posToMapIdx(openSet.set[i])];
-			if (score < lowest) {
-				idx = i;
-				lowest = score;
-			}
-		}
-		current = openSet.set[idx];
-		currentIdx = posToMapIdx(current);
-
-		if(current == dg.goal) {
-			finished = true;
-			continue;
-		}
-		
-		RemoveSet(openSet, current);
-		AddSet(closedSet, current);
-
-		uvec2 neighbours[] = {  up(current), down(current), right(current), left(current) };
-
-		for(int i = 0; i < 4; i++) {
-			uvec2 ne = neighbours[i];
-
-			//if in closed set OR outside bounds, we ignore this neighbour.
-			if(isInSet(closedSet,ne) || (ne.x == current.x && ne.y == current.y))
-				continue;
-
-			uint neIdx = posToMapIdx(ne);
-
-			//if obstacle, ignore
-			if(map[neIdx] != 0)
-				continue;
-			
-
-			uint t_gscore = gscore[currentIdx] + 1;
-
-			if(!isInSet(openSet,ne)) {
-				AddSet(openSet, ne);
-			}
-			else if (t_gscore >= gscore[neIdx]) {
-				continue;
-			}
-
-			cameFrom[neIdx] = current;
-			gscore[neIdx] = t_gscore;
-			fscore[neIdx] = gscore[neIdx] + h(ne);
-			
-		}
-		count = count + 1;
-	}
+	uint id = gl_GlobalInvocationID.x;
 	
 
+	// dummy workload
+	for(uint i = 0; i < 300000000; i++)
+	{}
 
-	for(int i=0; i<20; i++) {
-		steps[id][i] = ivec2(0,0);
+	uvec2 e = entities[id];
+	for(int i = 0; i < 20; i++)
+	{
+		float x = 2*uhash12(uvec2(i,id) + 100*e.x+1000)-1;
+		float y = 2*uhash12(uvec2(i,id)*10 + 100*e.y+100)-1;
+		steps[id][i] = ivec2(round(x), round(y));
 	}
+	
+	
+//
+//	/*
 
-	//reconstruct path
-	int s = 0;
-	while(current != start && s < numSteps/*min(h(start),numSteps)*/) {
-		currentIdx = posToMapIdx(current);
-		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
-		steps[id][s] = step;//uvec2(current.x, current.y);
-		current = cameFrom[currentIdx];
-		s++;
-	}
+//	return;
+//
+//	 id = gl_GlobalInvocationID.x;//const uint id = gl_GlobalInvocationID.y + gl_GlobalInvocationID.x; // current offset
+//
+//	uint numSteps = 10;
+//
+//	uvec2 start = entities[id];
+//	uvec2 current = start;
+//	uint currentIdx = posToMapIdx(current);
+//
+//	Set closedSet;
+//	Set openSet;
+//	closedSet.count = 0;
+//	openSet.count = 0;
+//	AddSet(openSet, current);
+//
+//	uvec2 cameFrom[5000];
+//	uint gscore[5000];
+//	uint fscore[5000];
+//
+//	for(int i=0; i<5000; i++) {
+//		//cameFrom[i] = uvec2(1000,1000);
+//		gscore[i] = 10000000;
+//		fscore[i] = 10000000;
+//	}
+//
+//	gscore[currentIdx] = 0;
+//	fscore[currentIdx] = h(current);
+//
+//	uint count = 0;
+//	bool finished = false;
+//	
+//	while(openSet.count > 0 && !finished  && hdist(start,current) < numSteps/*&& count < numSteps*/) {
+//		int idx = 0;
+//		uint lowest = 10000000;
+//		for (int i=0; i < openSet.count; i++) {
+//			uint score = fscore[posToMapIdx(openSet.set[i])];
+//			if (score < lowest) {
+//				idx = i;
+//				lowest = score;
+//			}
+//		}
+//		current = openSet.set[idx];
+//		currentIdx = posToMapIdx(current);
+//
+//		if(current == dg.goal) {
+//			finished = true;
+//			continue;
+//		}
+//		
+//		RemoveSet(openSet, current);
+//		AddSet(closedSet, current);
+//
+//		uvec2 neighbours[] = {  up(current), down(current), right(current), left(current) };
+//
+//		for(int i = 0; i < 4; i++) {
+//			uvec2 ne = neighbours[i];
+//
+//			//if in closed set OR outside bounds, we ignore this neighbour.
+//			if(isInSet(closedSet,ne) || (ne.x == current.x && ne.y == current.y))
+//				continue;
+//
+//			uint neIdx = posToMapIdx(ne);
+//
+//			//if obstacle, ignore
+//			if(map[neIdx] != 0)
+//				continue;
+//			
+//
+//			uint t_gscore = gscore[currentIdx] + 1;
+//
+//			if(!isInSet(openSet,ne)) {
+//				AddSet(openSet, ne);
+//			}
+//			else if (t_gscore >= gscore[neIdx]) {
+//				continue;
+//			}
+//
+//			cameFrom[neIdx] = current;
+//			gscore[neIdx] = t_gscore;
+//			fscore[neIdx] = gscore[neIdx] + h(ne);
+//			
+//		}
+//		count = count + 1;
+//	}
+//	
+//
+//
+//	for(int i=0; i<20; i++) {
+//		steps[id][i] = ivec2(0,0);
+//	}
+//
+//	//reconstruct path
+//	int s = 0;
+//	while(current != start && s < numSteps/*min(h(start),numSteps)*/) {
+//		currentIdx = posToMapIdx(current);
+//		ivec2 step = ivec2(current) - ivec2(cameFrom[currentIdx]);
+//		steps[id][s] = step;//uvec2(current.x, current.y);
+//		current = cameFrom[currentIdx];
+//		s++;
+//	}
+//	*/
 }

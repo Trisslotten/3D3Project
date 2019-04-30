@@ -2,15 +2,12 @@
 #include <iostream>
 #include "application.hpp"
 
-int GLOBAL_NUM_THREADS = 4;
-int GLOBAL_NUM_ENTITIES = 10;
+int GLOBAL_NUM_THREADS = 1;
+int GLOBAL_NUM_ENTITIES = 250;
+bool GLOBAL_TESTING = true;
 
-int main(void)
+int main(int argc, char *argv[])
 {
-	// TODO: set num threads from program arguments
-	GLOBAL_NUM_THREADS = 8;
-	GLOBAL_NUM_ENTITIES = 50;
-
 	Application app;
 	try
 	{
@@ -22,6 +19,5 @@ int main(void)
 		system("pause");
 		return EXIT_FAILURE;
 	}
-
 	return EXIT_SUCCESS;
 }

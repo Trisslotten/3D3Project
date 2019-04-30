@@ -1,6 +1,6 @@
 /*
 https://github.com/amc176/cpp-threadpool
-Modification: added licence below
+Modification: added licence below //Tristan
 
 	MIT License
 

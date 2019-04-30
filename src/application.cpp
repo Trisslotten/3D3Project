@@ -7,6 +7,7 @@
 #include <future>
 #include <thread>
 
+extern int GLOBAL_NUM_ENTITIES;
 
 void Application::updateAstar() {
 	while (!cleaned) {
@@ -19,7 +20,7 @@ void Application::updateAstar() {
 			world.setSteps(renderer.getSteps());
 		}
 
-		if (timer.elapsed() >= 0.02) {
+		if (timer.elapsed() >= 0.001) {
 			std::lock_guard<std::mutex> lock(entityMutex);
 			world.updateEntities();
 			timer.restart();
@@ -36,7 +37,7 @@ void Application::run()
 		update();
 		glfwPollEvents();
 	}
-	// :^)
+	// hack
 	exit(0);
 }
 
@@ -45,7 +46,7 @@ void Application::init()
 	//world.init(100, 100, 10);
 	std::string map = "test3.png";
 	world.init(map, GLOBAL_NUM_ENTITIES);
-	world.printEntities();
+	//world.printEntities();
 
 	renderer.init(map);
 	renderer.initCompute(world.mapSize, world.entitiesSize);
@@ -83,6 +84,7 @@ void Application::update()
 	{
 		renderer.submitEntity(Entity(e.x,e.y));
 	}
+
 
 	renderer.submitEntity(Entity(world.goal.x, world.goal.y, true));
 	renderer.render();

@@ -11,6 +11,7 @@
 
 extern int GLOBAL_NUM_THREADS;
 extern int GLOBAL_NUM_ENTITIES;
+extern bool GLOBAL_TESTING;
 
 #define MAX_DRAW_ENTITIES 256
 #define NUM_UNIFORM_FLOATS 3
@@ -132,13 +133,15 @@ private:
 
 
 	// benchmark values
-	const uint32_t NUM_BENCHMARK_FRAMES = 2000;
+	const uint32_t NUM_BENCHMARK_FRAMES = 500;
 	uint32_t benchmarkFrameCount = 0;
 	uint32_t benchmarkFirstDraw;
 	bool benchmarkIsFirstCompute = true;
 	uint32_t benchmarkFirstCompute = 0;
 	std::vector<uint32_t> benchmarkDrawValues;
 	std::vector<uint32_t> benchmarkComputeValues;
+	Timer recordTimer;
+	std::vector<double> benchmarkRecordValues;
 	void saveBenchmarkValues();
 
 	Timer fpsTimer;
