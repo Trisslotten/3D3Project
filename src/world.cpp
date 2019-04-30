@@ -10,6 +10,7 @@ World::World() {
 
 World::~World() {
 	delete origMap;
+	delete emptySteps;
 }
 
 void World::setNewGoal() {
